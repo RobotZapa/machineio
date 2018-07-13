@@ -1,7 +1,15 @@
 # Machine IO
 
-**Do not use machineio on heavy machinery while in alpha**  
-**Use caution and do dry runs before live testing**
+**Warning: Do not use machineio on heavy machinery while in alpha**  
+**Warning: Use caution and do dry runs before live testing**  
+
+###What is machineio?
+
+Machineio is a library to help you have a single unified interface 
+for your machines that use more then one micro controller.
+It helps you quickly create your own functions (functors) for interfacing with hardware.
+The specific hardware you choose to use can later be swapped out with simple
+modifications of your functor library.
 
 
 # Pin and Group functor model

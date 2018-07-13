@@ -1,8 +1,4 @@
-from machineio.group import Group
-from machineio.pin import Device
-from machineio.pin import Pin
-from machineio.safety import Safe
-from machineio.safety import stop, kill
+from machineio import Device, Pin, Group, Safe, stop, kill
 import math
 
 arduino = Device('firmata')
