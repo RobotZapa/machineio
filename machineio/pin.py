@@ -1,4 +1,5 @@
-from .safety import Safe
+from safety import Safe
+import os, sys, inspect
 import warnings
 
 class Pin:
@@ -78,7 +79,11 @@ class Device:
         self.protocol = protocol.lower()
         self.thread = None
         try:
-            exec(f'from machineio.drivers import {self.protocol} as proto', locals(), globals())
+            cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(
+                os.path.split(inspect.getfile(inspect.currentframe()))[0], "drivers")))
+            if cmd_subfolder not in sys.path:
+                sys.path.insert(0, cmd_subfolder)
+            exec(f'from drivers import {self.protocol} as proto', locals(), globals())
             self.connect_func = proto.connect
             self.io_func = proto.io
             self.config_func = proto.config

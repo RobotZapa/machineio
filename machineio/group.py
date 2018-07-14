@@ -1,4 +1,4 @@
-from .safety import Safe
+from safety import Safe
 import asyncio
 import warnings
 

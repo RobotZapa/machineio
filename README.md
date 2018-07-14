@@ -3,7 +3,7 @@
 **Warning: Do not use machineio on heavy machinery while in alpha**  
 **Warning: Use caution and do dry runs before live testing**  
 
-###What is machineio?
+### What is machineio?
 
 Machineio is a library to help you have a single unified interface 
 for your machines that use more then one micro controller.

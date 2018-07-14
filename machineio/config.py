@@ -1,6 +1,6 @@
 import time
 import sys
-from pin import Pin
+from pin import Pin, Device
 
 
 def servo():
@@ -11,7 +11,10 @@ def servo():
     '''
     print('===Servo auto configurator===')
     print('WARNING: there are is no emergency safety shutdown in place... stay clear of machinery')
-    device = input('What device is the servo connected to?:')
+    protocol = input('What device protocol is the servo using?:')
+    port = input('What is port of the device? (press enter for auto):')
+    port = port if len(port) > 0 else None
+    device = Device(protocol, port)
     pin = int(input('What pin number is the servo using on the device?:'))
     if input('Does your servo use a standard PWM/PPM range?(Y/N):').lower() in 'yes':
         print('===Hardware Values===')
@@ -25,10 +28,10 @@ def servo():
         zero = 0
         servo = Pin(device, pin, 'OUTPUT', 'SERVO', halt=True)
         while True:
-            val = input('Servo: ')
+            val = input(f'Servo currently at {pos} : ')
             if not val:
                 pos += 5
-            elif val.isdigit():
+            elif val.replace('-','').isdigit():
                 pos += int(val)
             elif val.isalpha():
                 if val.lower() in 'high':
