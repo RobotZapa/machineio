@@ -5,7 +5,7 @@ with open("README.md", 'r') as fh:
 
 setuptools.setup(
     name='machineio',
-    version='0.0.1',
+    version='0.0.2',
     author='Michael Elliott',
     author_email='robotzapa@gmail.com',
     description='Machine IO using functors to abstract hardware io',
@@ -13,10 +13,11 @@ setuptools.setup(
     url='https://github.com/RobotZapa/machineio',
     packages=setuptools.find_packages(),
     classifiers=[
-        'Programming Language :: Python :: 3',
-        'Licence :: OSI Approved :: MIT Licence',
+        'Programming Language :: Python :: 3.6',
+        'Topic :: Scientific/Engineering :: Interface Engine/Protocol Translator',
+        'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
-        'Development Status :: Alpha',
+        'Development Status :: 3 - Alpha',
         'Framework :: Robot Framework',
     ],
 )
