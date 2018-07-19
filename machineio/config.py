@@ -65,7 +65,5 @@ def servo():
 
 
 if __name__ == '__main__':
-    func = sys.argv[1]
-    if func == 'servo':
-        servo()
-
+    func = sys.argv[1].lower()
+    exec('func()')

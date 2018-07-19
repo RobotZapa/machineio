@@ -1,13 +1,13 @@
-from safety import Safe
-import asyncio
+from .safety import Safe
+import threading
 import warnings
 
 class Group:
-    def __init__(self, dimensions, limit=lambda x: True, **kwargs):
+    def __init__(self, dimensions, **kwargs):
         '''
         A group of Pin(s) or Group(s)
         :param dimensions: how many args are taken by the functor call
-        :param limit: a function that returns a bool based on functor call inputs
+        :keyword limit: a function that returns a bool based on functor call inputs
         :keyword halt: the safety halting function, see the Move documentation
 
         It is recommended to use group.add instead of these.
@@ -20,7 +20,7 @@ class Group:
         self.objects = []
         self.translations = []
         self.delay = []
-        self.limit = limit if type(limit) is tuple else (limit,)
+        self.limit = kwargs['limit'] if 'limit' in kwargs else None
 
         if 'halt' in kwargs:
             self.halt = kwargs['halt']
@@ -35,7 +35,7 @@ class Group:
             if len(self.objects) != len(self.translations) or \
                     len(self.objects) != len(self.limit) or \
                     len(self.objects) != len(self.delay):
-                raise TypeError('There must be translation functions for every object.')
+                raise TypeError('There must be translation functions and delay values for every object.')
 
         # append group to safe
         Safe.insert_group(self)
@@ -49,28 +49,36 @@ class Group:
         '''
         if len(args) != self.dimensions:
             raise TypeError(f'This group requires {self.dimensions} arguments')
-        for arg, limit in zip(args, self.limit):
-            if not limit(arg):
-                raise ValueError(f'The value {arg} is not valid with limit {limit}')
+        if self.limit is not None and not self.limit(args):
+            raise ValueError(f'Call outside of group limits.')
         for obj, trans, delay in zip(self.objects, self.translations, self.delay):
             if delay:
-                asyncio.TimerHandle(delay, Group._delay_event, [obj, trans, args, kwargs], asyncio.get_event_loop())
+                threading.Timer(delay, Group._delay_event, [obj, trans, args, kwargs]).start()
+                threading.Event()
             else:
-                return obj(trans(*args, **kwargs))
+                if trans is None:
+                    obj(*args, **kwargs)
+                else:
+                    obj(trans(*args, **kwargs))
 
-    def add(self, pin_or_group, translation=lambda x: x, delay=None):
+    def add(self, pin_or_group, **kwargs):
         '''
         :param pin_or_group: Pin or Group object
-        :param translation: function that takes all inputs of this Group
+        :keyword translation: function that takes all inputs of this Group
             and changes it to give to the respective members of the Pin or Group.
             default is x -> x
-        :param delay: the number of seconds before event is triggered
+        :keyword delay: the number of seconds before event is triggered
         :return:
         '''
+        delay = kwargs['delay'] if 'delay' in kwargs else None
+        translation = kwargs['translation'] if 'translation' in kwargs else None
         self.delay.append(delay)
         self.objects.append(pin_or_group)
         self.translations.append(translation)
 
     @staticmethod
     def _delay_event(obj, trans, args, kwargs):
-        obj(trans(*args, **kwargs))
+        if trans is None:
+            obj(*args, **kwargs)
+        else:
+            obj(trans(*args, **kwargs))

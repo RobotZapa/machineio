@@ -1,6 +1,8 @@
-from safety import Safe
-import os, sys, inspect
+from .safety import Safe
 import warnings
+import sys, os
+# put driver files in the current working path scope
+sys.path.insert(0, os.path.dirname(os.path.realpath('drivers'))+'/drivers')
 
 class Pin:
     def __init__(self, device, pin, io, pin_type, **kwargs):
@@ -72,31 +74,12 @@ class Pin:
                                      f'Safe.proceed is False')
 
 
-class Device:
-    def __init__(self, protocol, com_port=None):
-        self.object = None
-        self.port = com_port
-        self.protocol = protocol.lower()
-        self.thread = None
-        try:
-            cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(
-                os.path.split(inspect.getfile(inspect.currentframe()))[0], "drivers")))
-            if cmd_subfolder not in sys.path:
-                sys.path.insert(0, cmd_subfolder)
-            exec(f'from drivers import {self.protocol} as proto', locals(), globals())
-            self.connect_func = proto.connect
-            self.io_func = proto.io
-            self.config_func = proto.config
-        except:
-            raise NotImplemented(f'Protocol {self.protocol} is not implemented yet,'
-                                 f' if you implement please submit your work to our page')
-        self.connect()
-
-    def connect(self, *args, **kwargs):
-        return self.connect_func(self, *args, **kwargs)
-
-    def io(self, *args, **kwargs):
-        return self.io_func(self, *args, **kwargs)
-
-    def config(self, *args, **kwargs):
-        return self.config_func(self, *args, **kwargs)
+#Function that returns dynamic device protocol object
+#It is pretending to be a class for the user
+def Device(protocol, com_port=None):
+    try:
+        exec(f'from machineio.drivers import {protocol} as proto', locals(), globals())
+    except ImportError:
+        print('If you would like to add a driver file for this protocol please submit a request!')
+        raise NotImplemented(f'Protocol {protocol} may not be implemented yet. Or dependencies for it are missing.')
+    return proto.Device(protocol, com_port)

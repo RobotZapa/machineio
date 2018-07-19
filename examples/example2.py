@@ -9,3 +9,4 @@ power = mio.Group(1)
 power.add(right)
 power.add(left)
 
+power(10)

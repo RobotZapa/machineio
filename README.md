@@ -93,7 +93,9 @@ Callback is activated any time the pin state changes.
 ## Group
 A group is a cluster of pins that work together in some way.  A single pin can be used in more than one group!
 Pins can be defined to trigger after some time, this time can be different for each pin in the group. This is
-handled as a non-blocking call, so it fires asynchronously from your code. Groups should not be used for inputs.
+handled as a non-blocking call, so it fires asynchronously from your code.
+
+**Note: Groups can not be used for inputs.**
 
 **A safety function should be defined for groups, while not necessary it is strongly recommended.**
 The safety.stop() is a complex process you need to know.

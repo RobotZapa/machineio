@@ -4,8 +4,10 @@
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/venv" />
       <excludeFolder url="file://$MODULE_DIR$/venv-lin" />
+      <excludeFolder url="file://$MODULE_DIR$/venv-lin-36" />
+      <excludeFolder url="file://$MODULE_DIR$/venv-lin-37" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.7 (machineio)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.6 (venv-lin-36)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="TestRunnerService">
