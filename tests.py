@@ -1,4 +1,4 @@
-import unittest, time
+import unittest, time, os
 import machineio as mio
 
 
@@ -98,6 +98,22 @@ class TestGroup(unittest.TestCase):
         self.assertEqual(self.pin2.state, False)
         time.sleep(1.2)
         self.assertEqual(self.pin2.state, True)
+
+class TestNetwork(unittest.TestCase):
+    def setUp(self):
+        input('Please startup your server.py and client.py (default name) scripts...')
+        # connect a client
+    def test_command(self):
+        pass
+
+    def test_data(self):
+        pass
+
+    def test_notice(self):
+        pass
+
+    def test_halt(self):
+        pass
 
 if __name__ == '__main__':
     unittest.main()

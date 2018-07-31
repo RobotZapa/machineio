@@ -30,7 +30,7 @@ class Safe:
     @staticmethod
     def _list_children(group):
         contains = []
-        if type(item).__name__ == 'Pin':
+        if type(group).__name__ == 'Pin':
             return contains
         for item in group.objects:
             if type(item).__name__ == 'Group':

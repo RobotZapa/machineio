@@ -1,10 +1,12 @@
 class Device:
-    def __init__(self, protocol, com_port=None):
+    def __init__(self, protocol, com_port=None, network=None):
         self.object = None
         self.port = com_port
         self.protocol = protocol.lower()
         self.thread = None
         self.connect()
+        self.network = network
+        self.pins = []
 
     def connect(self):
         print(f'Connecting to device on port {self.port}...')
@@ -12,6 +14,7 @@ class Device:
         self.object = PyMata3(com_port=self.port)
 
     def config(self, pin):
+        self.pins.append(pin)
         from pymata_aio.constants import Constants
         if pin.pin_type == 'PWM':
             self.object.set_pin_mode(pin.pin, Constants.PWM)

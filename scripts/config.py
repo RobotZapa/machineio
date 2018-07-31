@@ -1,6 +1,10 @@
 import time
-import sys
-from pin import Pin, Device
+import sys, os
+
+# for a reason as to why imports of siblings is so ugly
+# see https://mail.python.org/pipermail/python-3000/2007-April/006793.html
+sys.path.insert(0, os.path.abspath('..'))
+import machineio
 
 
 def servo():
@@ -14,7 +18,7 @@ def servo():
     protocol = input('What device protocol is the servo using?:')
     port = input('What is port of the device? (press enter for auto):')
     port = port if len(port) > 0 else None
-    device = Device(protocol, port)
+    device = machineio.Device(protocol, port)
     pin = int(input('What pin number is the servo using on the device?:'))
     if input('Does your servo use a standard PWM/PPM range?(Y/N):').lower() in 'yes':
         print('===Hardware Values===')
@@ -26,7 +30,7 @@ def servo():
         hard_low = 0
         hard_high = 180
         zero = 0
-        servo = Pin(device, pin, 'OUTPUT', 'SERVO', halt=True)
+        servo = machineio.Pin(device, pin, 'OUTPUT', 'SERVO', halt=True)
         while True:
             val = input(f'Servo currently at {pos} : ')
             if not val:
@@ -66,4 +70,4 @@ def servo():
 
 if __name__ == '__main__':
     func = sys.argv[1].lower()
-    exec('func()')
+    exec(f'{func}()')

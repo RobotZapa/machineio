@@ -5,7 +5,7 @@ with open("README.md", 'r') as fh:
 
 setuptools.setup(
     name='machineio',
-    version='0.0.2',
+    version='0.0.4',
     author='Michael Elliott',
     author_email='robotzapa@gmail.com',
     description='Machine IO using functors to abstract hardware io',

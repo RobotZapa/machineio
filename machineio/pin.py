@@ -1,14 +1,11 @@
 from .safety import Safe
 import warnings
-import sys, os
-# put driver files in the current working path scope
-sys.path.insert(0, os.path.dirname(os.path.realpath('drivers'))+'/drivers')
 
 class Pin:
     def __init__(self, device, pin, io, pin_type, **kwargs):
         '''
         :param pin: the pin number on the device
-        :param io: INPUT | OUTPUT | True
+        :param io: INPUT | OUTPUT
         :param pin_type: PWM | DIGITAL | ANALOG | SERVO
         :keyword limits: a tuple (low, high)
         :keyword translate: a function to do __call__ translation
@@ -18,6 +15,7 @@ class Pin:
         '''
         self.device = device
         self.pin = pin
+        self.pin_type = pin_type
         self.limits = kwargs['limits'] if 'limits' in kwargs else False
         self.translate = kwargs['translate'] if 'translate' in kwargs else lambda x: x
         self.translate_limits = kwargs['translate_limits'] if 'translate_limits' in kwargs else False
@@ -67,19 +65,11 @@ class Pin:
                 else:
                     value = self.translate(value)
                     self.state = value
-            self.device.io(self, value, *args, **kwargs)
+            value = self.device.io(self, value, *args, **kwargs)
+            if value is not None:
+                self.state = value
+            return value
         else:
             if not Safe.SUPPRESS_WARNINGS:
                 raise RuntimeWarning(f'Move command on {self.device} pin {self.pin} cannot be executed!,'
                                      f'Safe.proceed is False')
-
-
-#Function that returns dynamic device protocol object
-#It is pretending to be a class for the user
-def Device(protocol, com_port=None):
-    try:
-        exec(f'from machineio.drivers import {protocol} as proto', locals(), globals())
-    except ImportError:
-        print('If you would like to add a driver file for this protocol please submit a request!')
-        raise NotImplemented(f'Protocol {protocol} may not be implemented yet. Or dependencies for it are missing.')
-    return proto.Device(protocol, com_port)

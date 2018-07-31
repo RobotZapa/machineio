@@ -5,11 +5,14 @@
 
 ### What is machineio?
 
-Machineio is a library to help you have a single unified interface 
-for your machines that use more then one micro controller.
+Want to use functional programming on your machine/robot?
+
+Machineio is a library to help you create a single unified interface 
+for your machines that use one or more micro controllers.
 It helps you quickly create your own functions (functors) for interfacing with hardware.
-The specific hardware you choose to use can later be swapped out with simple
-modifications of your functor library.
+The specific micro controller(s) you choose to use can later be swapped out with simple
+modifications of your functor library. Devices can be added and controlled over a network
+with a few simple additions to your functor library.
 
 
 # Pin and Group functor model
@@ -22,7 +25,10 @@ This is a way to overcome both of these problems in a very elegant manner.
 You create your own function interface library for your machine based on Pins, 
 and Groups of Pins, and Groups of Groups.
 This is done by creating a Device, Pin and Group objects and specifying a few modifying functions.
-They are all non-blocking calls and can have time delays and callbacks added with keyword arguments!
+The only blocking call in a pin input. It waits to return it's value and should only take a 
+fraction of a second even over a network. Pins in groups and can have time delays and
+input pins can have callbacks added with keyword arguments. Controlling a device over a network
+can be added by creating a Network object and passing it as a parameter to a device.
 
 ## Safety
 
@@ -121,11 +127,26 @@ Further actions will be prevented until safety.Safe.proceed is True
         returns the .add pin or groups args.
     - delay: when this (parent) Group is called it waits this amount of seconds
         before making the call to the .add group.
-        
+ 
+## Networking (in progress)
+**Note: do not use outside of a secure network, the protocol is in development and has no encryption currently.**  
+To access network devices you must have a server to connect everything to.
+To setup this server run machineio/scripts/server.py from the command line.  
+Note: Servers are separate from the code itself. It can be run anywhere including on every remote client  
+The remote devices will also need a connection to the server. To setup this up
+run machineio/scripts/client.py on each remote client with devices you want to access.
+When creating a network Device the only thing you need different is adding Network
+  * machineio.Device(protocol, com_port, **Network(server_address, server_port, client_name)**)
 
-##Configuration
-###Servos
+If you need to transport some data from or to device client you can do that.
+  * machineio.network.message_controller(Network_obj, name, data_return_func)
+  
+If you would like to perform an action on disconnect of a client define the following.
+  * machineio.network.linkfailure = function_obj
+
+## Configuration
+### Servos
 Servos need a to be calibrated to get the desired results quite often. 
 So I've added a tool to help you configure your servos.
 
-**from the console:** Python3.7 machineio/machineio/config.py servo
+**from the console:** Python3.6 machineio/scripts/config.py servo
