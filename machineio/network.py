@@ -1,18 +1,22 @@
 import asyncio
+import os
 import functools
 import machineio as mio
 import inspect
+import secrets
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 '''
 protocol headers (end of header delimited by the first ~)
-(cAUTH_TOKEN,TO_CLIENT_NAME) command - only from controller
+(cTO_CLIENT_NAME) command - only from controller
 (rCLIENT_NAME) response - only to controller
 (bCLIENT_NAME) callback - only to controller
 (dFROM_NAME,TO_NAME) data - data shuttle
 (nCLIENT_NAME) notice - sent to controller
 (aCLIENT_NAME) add - adding a new client
-(k) key - payload is public key
+(k) key - payload is public key (currently unused)
 '''
+
 
 class _NetworkDevice:
     '''
@@ -122,11 +126,16 @@ class _Client(asyncio.Protocol):
     '''
     def __init__(self, device):
         self.device = device
+        self.transport = None
+        self.crypto = None
 
     def connection_made(self, transport):
+        self.transport = transport
+        # the first add transmission is unencrypted
         q=mionet_assembler('add', 'controller', 'server', f'{self.device.network.control_token}~{self.network.client}')
         self.transport.write(q)
         self.device.send = self.transport.write
+        self.crypto = self.device.network.crypto
 
     def connection_lost(self, exc):
         self.device.network.linkfailure(self.device.network.client)
@@ -147,39 +156,92 @@ class _Client(asyncio.Protocol):
         elif msg_type == 'notice':
             self.network.notice(payload)
 
+
 class Network:
     '''
     The user interface
     '''
-    def __init__(self, client_name, control_token, host, port=20801, **kwargs):
+    def __init__(self, client_name, host, port=20801, **kwargs):
         self.control_token = control_token
         self.host = host
         self.port = port
         self.client = client_name
-        self.linkfailure = kwargs['linkfailure'] if 'linkfailure' in kwargs else None
+        self.linkfailure = kwargs['linkfailure'] if 'linkfailure' in kwargs else lambda: print('link failure!')
+        self.keyfile = kwargs['keyfile'] if 'keyfile' in kwargs else 'controller.key'
+        if os.path.isfile(self.keyfile):
+            self.crypto = Crypto(self.keyfile)
+        else:
+            print('Encryption key file was not located.')
+            self.crypto = Crypto()
 
     def notice(self, info):
-        pass
+        if info == 'linkfailure':
+            self.linkfailure()
 
 
-def mionet_assembler(type, from_name, to_name, payload, auth_token=None):
+class Crypto:
+
+    def __init__(self, keyfile=None):
+        self.link = None
+        self.version = None
+        self.auth = None
+        self.iv_bytes = None
+
+        self.load(keyfile)
+
+    def load(self, keyfile):
+        if keyfile is not None:
+            f = open(keyfile, 'r')
+            f_lines = f.readlines()
+            f.close()
+            self.version = f_lines[0].replace('\n', '').decode()
+            if 'v0.1' in f_lines[0]:
+                key = f_lines[1].replace('\n', '')
+                self.iv_bytes = f_lines[2].replace('\n', '')
+                self.auth = f_lines[3].replace('\n', '')
+                self.link = AESGCM(key)
+        else:
+            print('WARNING: Encryption is available but not enabled.')
+
+    def encrypt(self, data):
+        if self.version == 'v0.1':
+            iv = secrets.token_bytes(self.iv_bytes)
+            cdata = iv + self.link.encrypt(iv, data, self.auth)
+        else:
+            return data
+        return cdata
+
+    def decrypt(self, cdata):
+        iv = cdata[:self.iv_bytes]
+        cdata = cdata[self.iv_bytes:]
+        if self.version == 'v0.1':
+            data = self.link.decrypt(iv, cdata, self.auth)
+        else:
+            return cdata
+        return data
+
+    @staticmethod
+    def genorate_keyfile(filename, version='v0.1', key_bits=128, iv_bytes=12, auth_bytes=32):
+        auth = secrets.token_bytes(auth_bytes)
+        if version == 'v0.1':
+            key = AESGCM.generate_key(bit_length=key_bits)
+        lines = [version.encode(), key, str(iv_bytes).encode(), auth]
+        f = open(filename, 'wb+')
+        f.writelines(lines)
+        f.close()
+
+
+def mionet_assembler(type, from_name, to_name, payload, **kwargs):
     '''
 
     :param type: 'command', 'response', 'callback', 'notice', 'data', 'add'
     :param from_name:
     :param to_name:
     :param payload:
-    :param auth_token: the authorization token created by the server.
     :return: b'string'
     '''
     data = []
     if type == 'command':
-        data.append('c')
-        if auth_token:
-            data.append(auth_token)
-            data.append(',')
-        else:
-            raise ValueError('Required authorization token for control is missing.')
         data.append(to_name)
         data.append('~')
         data.append(payload)
@@ -210,10 +272,11 @@ def mionet_assembler(type, from_name, to_name, payload, auth_token=None):
         data.append(from_name)
         data.append('~')
         data.append(payload)
-    return ''.join(data).encode()
+    data = ''.join(data).encode()
+    return data.encode()
 
 
-def mionet_parser(data):
+def mionet_parser(data, **kwargs):
     '''
     Validates the message, and returns the raw data for execution
     :param str_data:
@@ -225,7 +288,8 @@ def mionet_parser(data):
     payload = data.split('~')[1:]
     if data.startswith('c'):
         msg_type = 'command'
-        from_name, to_name = header.splti(',')
+        from_name = 'controller'
+        to_name = header[1:]
     elif data.startswith('r'):
         msg_type = 'respond'
         from_name = header[1:]

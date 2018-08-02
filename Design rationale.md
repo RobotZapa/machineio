@@ -28,4 +28,15 @@ of the safety function. This might fail if it is compiled code that has no sourc
 available. If this is the case it will throw an error about halt not being
 available automatically. If this happens you can manually configure a halt on the
 remote system by **NOT YET FINISHED.**
-
+#### Security
+Links work by encrypting each line separately from other links. The server is a router.
+There are two security files. One is for the controller's authentication signature.
+The other is for the encryption. These files will be versioned at the top.
+The server will securely generate the files if they are not present.
+The servers and clients will all be the latest implementation, they may not be backwards
+compatible. If so they will reside in scripts/archives unless they are deemed insecure.
+###### v0.1
+you must manually distribute the files to the proper clients. It uses AES-GCM encryption. 
+This relies on the security of _every_ system connected, as they all use the same encryption.
+This is absolutely not acceptable for deployment of IOT in any way. This is good for single 
+person/program

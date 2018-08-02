@@ -14,16 +14,14 @@ except ImportError:
 
 class MioServer(asyncio.Protocol):
 
-    # all keyed off client name
     keys = {}
     clients = {}
     controller = {}
 
-    controller_token = None
-
     def connection_made(self, transport):
         print('Client has connected.')
-        self.transport = transport
+        self.transport = self.transport
+        self.crypto = machineio.network.Crypto()
 
     def connection_lost(self, exc):
         for key in MioServer.clients:
@@ -38,25 +36,28 @@ class MioServer(asyncio.Protocol):
         print('Client has disconnected.')
 
     def data_received(self, data):
+        data = self.crypto.decrypt(data)
         data_type, from_name, to_name, payload = machineio.network.mionet_parser(data)
         if data_type == 'add':
-            if from_name == MioServer.controller_token:
+            if from_name == 'controller':
                 MioServer.controller[payload.split('~')[1]] = self
             else:
                 if from_name in MioServer.clients or from_name in ['controller', 'server']:
                     raise NameError('Client with this name already exists')
                 else:
                     MioServer.clients[from_name] = self
+                    if os.path.isfile(f'{from_name}.key'):
+                        self.crypto.load(f'{from_name}.key')
+                    MioServer.keys[from_name] = self.crypto
         elif data_type:
             if to_name == 'controller':
-                MioServer.controller[to_name].transport.write(data)
+                MioServer.controller[to_name].transport.write(MioServer.keys[to_name].encypt(data))
             elif to_name == 'server':
                 pass
-            elif from_name == MioServer.controller_token:
-                data = machineio.network.mionet_assembler(data_type, 'controller', to_name, payload)
-                MioServer.clients[to_name].transport(data)
             else:
+                data = MioServer.keys[to_name].encrypt(data)
                 MioServer.clients[to_name].transport(data)
+
     def eof_received(self):
         pass
 
@@ -99,22 +100,13 @@ if __name__ == '__main__':
 
     print(f'Starting Machine IO server on {args.host} port {args.port}')
 
-    try:
-        key_file = open('server.key', 'r')
-        key_file_lines = key_file.readlines()
-        key_file.close()
-        for i in range(len(key_file_lines)-1):
-            key_file_lines[i].replace('\n', '')
-        MioServer.controller_token = key_file_lines[0]
-        if len(key_file_lines) == 1:
-            print('WARNING: no encryption is currently enabled, only use on a secure network.')
-    except FileNotFoundError:
-        import secrets
-        MioServer.controller_token = secrets.token_urlsafe(32)
-        print(f'Your controller token is: {MioServer.controller_token}')
-        key_file = open('server.key', 'w+')
-        key_file.write(MioServer.controller_token+'\n')
-        key_file.close()
+    if not os.path.isfile('controller.key'):
+        print('===== Generating the key files =====')
+        machineio.network.Crypto.genorate_keyfile('controller.key')
+        clients = input('Input the names of your controllers (space separated): ').split(' ')
+        for client in clients:
+            machineio.network.Crypto.genorate_keyfile(f'{client}.key')
+        print('=== Please distribute these key files to the proper hosts ===')
 
     try:
         loop.run_forever()

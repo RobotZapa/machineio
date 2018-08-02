@@ -18,11 +18,17 @@ class MioClient(asyncio.Protocol):
 
     def connection_made(self, transport):
         self.transport = transport
+        if os.path.isfile(f'{MioClient.client_name}.key'):
+            self.crypto = machineio.network.Crypto(MioClient.client_name+'.key')
+        else:
+            print('Encryption key file was not located.')
+            self.crypto = machineio.network.Crypto()
         self.mio_locals = {}
         self.mio_globals = {}
         exec('import importlib', self.mio_globals, self.mio_locals)
         exec('importlib.import_module(".", "machineio")', self.mio_globals, self.mio_locals)
 
+        # the first add transmission is unencrypted
         add = machineio.network.mionet_assembler(
             'add',
             MioClient.client_name,
@@ -32,16 +38,18 @@ class MioClient(asyncio.Protocol):
         self.transport.write(add)
 
     def data_received(self, data):
+        data = self.crypto.decrypt(data)
         data_type, from_name, to_name, payload = machineio.network.mionet_parser(data)
         if data_type == 'command' and from_name == 'controller':
             # this should be a function call
             result = eval(payload, self.mio_globals, self.mio_locals)
-            self.transport.write(machineio.network.mionet_assembler(
-                'result',
-                MioClient.client_name,
-                'controller',
-                result,
-            ))
+            self.transport.write(self.crypto.encrypt(
+                machineio.network.mionet_assembler(
+                    'result',
+                    MioClient.client_name,
+                    'controller',
+                    result,
+                )))
         elif data_type == 'data':
             # this should be a variable setter
             exec(payload, self.mio_globals, self.mio_locals)
