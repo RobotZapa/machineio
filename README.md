@@ -90,9 +90,9 @@ Callback is activated any time the pin state changes.
       + limits: tuple (low, high) where, low <= valid <= high. After translation
       + translate: A function used for modifying the pin's functor input.
       + translate_limits: tuple (low, high) where, low <= valid <= high, Before translation
-      + callback: A function to call when the state of the pin changes. 
-        Given (value, pin_obj) as arguments. 
-        Called asynchronously.
+      + callback: A function to call when the state of the pin changes.
+        Given (value, pin_obj) as arguments.
+        Called asynchronously; however, it must not block the thread.
   * #### Pin_obj.state  
     The value of the last known state of the pin.  Does not use the Pin_obj() call.
 
@@ -128,21 +128,28 @@ Further actions will be prevented until safety.Safe.proceed is True
     - delay: when this (parent) Group is called it waits this amount of seconds
         before making the call to the .add group.
  
-## Networking (in progress)
-**Note: do not use outside of a secure network, the protocol is in development and has no encryption currently.**  
+## Networking
+Encryption is a part of how the network functions, it should not be disabled.
 To access network devices you must have a server to connect everything to.
-To setup this server run machineio/scripts/server.py from the command line.  
-Note: Servers are separate from the code itself. It can be run anywhere including on every remote client  
+To setup this server run machineio/scripts/server.py from the command line.
 The remote devices will also need a connection to the server. To setup this up
 run machineio/scripts/client.py on each remote client with devices you want to access.
-When creating a network Device the only thing you need different is adding Network
-  * machineio.Device(protocol, com_port, **Network(server_address, server_port, client_name)**)
-
-If you need to transport some data from or to device client you can do that.
-  * machineio.network.message_controller(Network_obj, name, data_return_func)
+Any one client cannot have more then one controller at this time.
   
-If you would like to perform an action on disconnect of a client define the following.
-  * machineio.network.linkfailure = function_obj
+Before creating a network device you must create a network.
+  * ##### ctrl_net = machineio.Network(host, port=20801, key_file='controller.key')  
+  
+Once you have a network you can create a device
+  * ##### ctrl_net.Device(protocol, com_port=20801, client_name='default', linkfailure=machineio.kill)
+
+If you need to transport some data from or to device client you can do that. (This will likely change)
+  * #####ctrl_net.send('data', 'controller', 'to_client_name', {'exec': code})
+  
+If you would like to perform an action if the controller cannot reach the server.
+takes self, the network object, as a parameter.
+  * #####ctrl_net.linkfailure = lambda self: machineio.stop('link failure')
+
+
 
 ## Configuration
 ### Servos

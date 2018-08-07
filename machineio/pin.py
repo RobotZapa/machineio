@@ -52,16 +52,16 @@ class Pin:
 
     def __call__(self, value, *args, **kwargs):
         if Safe.proceed:
-            if self.limits and value is int:
-                if value < self.limits[0] or value > self.limits[1]:
-                    raise ValueError(f'Call {value} is not within mechanical/electrical/logical limits specified')
+            if self.limits and type(value) is int or type(value) is float:
+                if self.limits[0] > value or value > self.limits[1]:
+                    raise ValueError(f'Call {value} is not within limits specified')
             if self.translate:
                 if self.translate_limits:
-                    if value > self.translate_limits[0] and value < self.translate_limits[1]:
+                    if self.translate_limits[0] <= value <= self.translate_limits[1]:
                         value = self.translate(value)
                         self.state = value
                     else:
-                        raise ValueError('Call not within translatable limits.')
+                        raise ValueError('Call not within limits post-translation specified.')
                 else:
                     value = self.translate(value)
                     self.state = value

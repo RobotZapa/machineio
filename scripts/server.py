@@ -1,6 +1,6 @@
 import sys, os, argparse
 import asyncio
-
+import itertools as it
 # for a reason as to why imports of siblings is so ugly
 # see https://mail.python.org/pipermail/python-3000/2007-April/006793.html
 sys.path.insert(0, os.path.abspath('..'))
@@ -17,46 +17,64 @@ class MioServer(asyncio.Protocol):
     keys = {}
     clients = {}
     controller = {}
+    awaiting_handshake = []
+
+    def __init__(self):
+        self.transport = None
+        self.crypto = None
 
     def connection_made(self, transport):
+        print('=====================')
         print('Client has connected.')
-        self.transport = self.transport
+        self.transport = transport
         self.crypto = machineio.network.Crypto()
+        MioServer.awaiting_handshake.append(self)
 
     def connection_lost(self, exc):
-        for key in MioServer.clients:
-            if MioServer.clients[key] is self:
-                print('Client was properly removed.')
-                MioServer.controller[key].transport.write(
-                    machineio.network.mionet_assembler('notice', 'server', 'controller', 'linkfailure'))
-                del MioServer.clients[key]
+        for name in it.chain(MioServer.clients, MioServer.controller):
+            if name in MioServer.clients and MioServer.clients[name] is self:
+                del MioServer.keys[name]
+                del MioServer.clients[name]
+                MioServer.controller[name].transport.write(
+                    machineio.network.mionet_assembler('notice', 'server', f'controller~{name}', 'linkfailure'))
+                print(f'Client "{name}" was properly removed.')
+                break
+            elif name in MioServer.controller and MioServer.controller[name] is self:
+                del MioServer.keys[name]
+                del MioServer.controller[name]
+                print(f'Client Controller "{name}" was properly removed.')
                 break
         else:
             print('Client was not properly removed.')
-        print('Client has disconnected.')
 
     def data_received(self, data):
-        data = self.crypto.decrypt(data)
-        data_type, from_name, to_name, payload = machineio.network.mionet_parser(data)
-        if data_type == 'add':
-            if from_name == 'controller':
-                MioServer.controller[payload.split('~')[1]] = self
-            else:
-                if from_name in MioServer.clients or from_name in ['controller', 'server']:
+        if self in MioServer.awaiting_handshake:
+            MioServer.awaiting_handshake.remove(self)
+            data = self.crypto.handshake_server(data)
+            data_type, from_name, to_name, payload = machineio.network.parse(data)
+            if data_type == 'add':
+                if from_name == 'controller':
+                    from_name = f'controller~{payload}'
+                    MioServer.controller[from_name] = self
+                    MioServer.keys[from_name] = self.crypto
+                    print(f'Client "{from_name}" is verified as controller.')
+                elif from_name in MioServer.clients or from_name == 'server':
                     raise NameError('Client with this name already exists')
                 else:
                     MioServer.clients[from_name] = self
-                    if os.path.isfile(f'{from_name}.key'):
-                        self.crypto.load(f'{from_name}.key')
                     MioServer.keys[from_name] = self.crypto
-        elif data_type:
+                    print(f'Client "{from_name}" is now verified.')
+        else:
+            data = self.crypto.decrypt(data)
+            data_type, from_name, to_name, payload = machineio.network.parse(data)
             if to_name == 'controller':
-                MioServer.controller[to_name].transport.write(MioServer.keys[to_name].encypt(data))
+                MioServer.controller[f'controller~{from_name}'].transport.write(
+                    MioServer.keys[f'controller~{from_name}'].encrypt(data))
             elif to_name == 'server':
                 pass
             else:
                 data = MioServer.keys[to_name].encrypt(data)
-                MioServer.clients[to_name].transport(data)
+                MioServer.clients[to_name].transport.write(data)
 
     def eof_received(self):
         pass
@@ -102,11 +120,12 @@ if __name__ == '__main__':
 
     if not os.path.isfile('controller.key'):
         print('===== Generating the key files =====')
-        machineio.network.Crypto.genorate_keyfile('controller.key')
+        machineio.network.Crypto.generate_keyfile('controller.key')
         clients = input('Input the names of your controllers (space separated): ').split(' ')
         for client in clients:
-            machineio.network.Crypto.genorate_keyfile(f'{client}.key')
-        print('=== Please distribute these key files to the proper hosts ===')
+            machineio.network.Crypto.generate_keyfile(f'{client}.key')
+        print('You may now exit, distribute the keys and restart the server.')
+        print('You will have to connect the clients and then the controllers before issuing commands.')
 
     try:
         loop.run_forever()

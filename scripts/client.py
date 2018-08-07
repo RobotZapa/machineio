@@ -1,6 +1,5 @@
 import sys, os, argparse
 import asyncio
-
 # for a reason as to why imports of siblings is so ugly
 # see https://mail.python.org/pipermail/python-3000/2007-April/006793.html
 sys.path.insert(0, os.path.abspath('..'))
@@ -14,7 +13,7 @@ except ImportError:
 
 class MioClient(asyncio.Protocol):
 
-    client_name = 'test'
+    client_name = 'default'
 
     def connection_made(self, transport):
         self.transport = transport
@@ -25,42 +24,59 @@ class MioClient(asyncio.Protocol):
             self.crypto = machineio.network.Crypto()
         self.mio_locals = {}
         self.mio_globals = {}
-        exec('import importlib', self.mio_globals, self.mio_locals)
-        exec('importlib.import_module(".", "machineio")', self.mio_globals, self.mio_locals)
+        exec('import sys, os', self.mio_globals, self.mio_locals)
+        exec("sys.path.insert(0, os.path.abspath('..'))", self.mio_globals, self.mio_locals)
+        exec('import machineio', self.mio_globals, self.mio_locals)
 
         # the first add transmission is unencrypted
-        add = machineio.network.mionet_assembler(
+        add = machineio.network.assemble(
             'add',
             MioClient.client_name,
             'server',
             'null',
         )
-        self.transport.write(add)
+        handshake = self.crypto.handshake_client(add)
+        self.transport.write(handshake)
 
     def data_received(self, data):
         data = self.crypto.decrypt(data)
-        data_type, from_name, to_name, payload = machineio.network.mionet_parser(data)
+        data_type, from_name, to_name, payload = machineio.network.parse(data)
         if data_type == 'command' and from_name == 'controller':
-            # this should be a function call
-            result = eval(payload, self.mio_globals, self.mio_locals)
-            self.transport.write(self.crypto.encrypt(
-                machineio.network.mionet_assembler(
-                    'result',
-                    MioClient.client_name,
-                    'controller',
-                    result,
-                )))
+            try:
+                # print('payload:', payload)
+                # print('locals', self.mio_locals)
+                if 'exec' in payload:
+                    exec(payload['exec'], self.mio_globals, self.mio_locals)
+                if 'eval' in payload:
+                    result = eval(payload['eval'], self.mio_globals, self.mio_locals)
+                    self.transport.write(self.crypto.encrypt(
+                        machineio.network.assemble(
+                            'result',
+                            MioClient.client_name,
+                            'controller',
+                            {'state': result, 'future_id': payload['future_id']},
+                        )))
+            except Exception as e:
+                print(e)
+                self.transport.write(self.crypto.encrypt(
+                    machineio.network.assemble(
+                        'notice',
+                        MioClient.client_name,
+                        'controller',
+                        {'reason': 'error', 'info': e}
+                    )))
         elif data_type == 'data':
             # this should be a variable setter
             exec(payload, self.mio_globals, self.mio_locals)
-        elif data_type == 'key':
-            pass
+        else:
+            print(f'message type: {data_type} is not handled.')
 
     def eof_received(self):
         pass
 
     def connection_lost(self, exc):
-        machineio.kill('Connection lost')
+        print('Connection Lost! Killing Pins.')
+        self.mio_locals['linkfailure']() if 'linkfailure' in self.mio_locals else machineio.kill('Connection lost')
 
 
 def start_client(loop, host, port):
@@ -77,7 +93,7 @@ ARGS.add_argument(
     default=20801, type=int, help='Port number')
 ARGS.add_argument(
     '--name', action='store', dest='name',
-    default='test', help='Client Name')
+    default='default', help='Client Name')
 ARGS.add_argument(
     '--iocp', action='store_true', dest='iocp',
     default=False, help='Use IOCP event loop')

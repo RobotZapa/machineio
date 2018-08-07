@@ -29,12 +29,14 @@ class TestOutput(unittest.TestCase):
     def test_pwm(self):
         self.pin_pwm(10)
         self.assertEqual(self.pin_pwm.state, 5)
-        self.assertRaises(ValueError, self.pin_pwm(200))
+        with self.assertRaises(ValueError):
+            self.pin_pwm(200)
 
     def test_servo(self):
         self.pin_servo(0)
         self.assertEqual(self.pin_servo.state, 90)
-        self.assertRaises(ValueError, self.pin_servo(-100))
+        with self.assertRaises(ValueError):
+            self.pin_servo(-100)
 
     def test_analog(self):
         self.pin_analog(1.23)
@@ -102,19 +104,14 @@ class TestGroup(unittest.TestCase):
 class TestNetwork(unittest.TestCase):
     def setUp(self):
         input('Please startup your server.py and client.py (default name) scripts...')
+        self.network = mio.Network('127.0.0.1')
+        self.device = self.network.Device('test')
         # connect a client
-    def test_command(self):
-        pass
+    def test_all(self):
+        self.pinBob = mio.Pin(self.device, 2, mio.OUTPUT, mio.DIGITAL, halt=lambda self: self(True))
+        self.pinBob(False)
+        # after tests it will disconnect and the networks halt will be fired.
 
-    def test_data(self):
-        pass
-
-    def test_notice(self):
-        pass
-
-    def test_halt(self):
-        pass
 
 if __name__ == '__main__':
     unittest.main()
-
