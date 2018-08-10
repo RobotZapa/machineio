@@ -37,6 +37,11 @@ class MioClient(asyncio.Protocol):
         )
         handshake = self.crypto.handshake_client(add)
         self.transport.write(handshake)
+        self.send = lambda ty, fr, to, pl: self.transport.write(
+            self.crypto.encrypt(machineio.network.assemble(ty, fr, to, pl)))
+
+        self.mio_globals['send'] = self.send
+        self.mio_globals['client_name'] = MioClient.client_name
 
     def data_received(self, data):
         data = self.crypto.decrypt(data)
@@ -49,25 +54,33 @@ class MioClient(asyncio.Protocol):
                     exec(payload['exec'], self.mio_globals, self.mio_locals)
                 if 'eval' in payload:
                     result = eval(payload['eval'], self.mio_globals, self.mio_locals)
-                    self.transport.write(self.crypto.encrypt(
-                        machineio.network.assemble(
-                            'result',
-                            MioClient.client_name,
-                            'controller',
-                            {'state': result, 'future_id': payload['future_id']},
-                        )))
-            except Exception as e:
-                print(e)
-                self.transport.write(self.crypto.encrypt(
-                    machineio.network.assemble(
-                        'notice',
+                    self.send(
+                        'response',
                         MioClient.client_name,
                         'controller',
-                        {'reason': 'error', 'info': e}
-                    )))
+                        {'state': result, 'future_id': payload['future_id']},
+                    )
+            except Exception as e:
+                print(e)
+                print(f'Packet: [{data_type}, {from_name}, {to_name}, {payload}]')
+                self.send(
+                    'notice',
+                    MioClient.client_name,
+                    'controller',
+                    {'reason': 'error', 'info': e}
+                    )
         elif data_type == 'data':
-            # this should be a variable setter
-            exec(payload, self.mio_globals, self.mio_locals)
+            print('Data:', payload)
+            if payload['action'] == 'exec':
+                exec(payload['code'], self.mio_globals, self.mio_locals)
+            if payload['action'] == 'eval':
+                result = eval(payload['code'], self.mio_globals, self.mio_locals)
+                self.send(
+                    'response',
+                    MioClient.client_name,
+                    'controller',
+                    {'state': result, 'future_id': payload['future_id']},
+                )
         else:
             print(f'message type: {data_type} is not handled.')
 

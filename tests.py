@@ -6,10 +6,10 @@ class TestOutput(unittest.TestCase):
     def setUp(self):
         mio.Safe.SUPPRESS_WARNINGS = True
         self.device = mio.Device('test')
-        self.pin_digital = mio.Pin(self.device, 1, 'OUTPUT', 'DIGITAL', halt=lambda self: self(False))
-        self.pin_pwm = mio.Pin(self.device, 2, 'OUTPUT', 'PWM', limits=(-90, 90), halt=lambda self: self(0), translate=lambda x: x/2, translation_limits=(0, 100))
-        self.pin_servo = mio.Pin(self.device, 3, 'OUTPUT', 'SERVO', limits=(0, 180), halt=lambda self: self(0), translate=lambda x: x+90)
-        self.pin_analog = mio.Pin(self.device, 4, 'OUTPUT', 'ANALOG', limits=(0, 5), halt=lambda self: self(0), translate=lambda x: x*10, translate_limts=(0, 100))
+        self.pin_digital = mio.Pin(self.device, 1, mio.OUTPUT, mio.DIGITAL, halt=lambda self: self(False))
+        self.pin_pwm = mio.Pin(self.device, 2, mio.OUTPUT, mio.PWM, limits=(-90, 90), halt=lambda self: self(0), translate=lambda x: x/2, translation_limits=(0, 100))
+        self.pin_servo = mio.Pin(self.device, 3,  mio.OUTPUT, mio.SERVO, limits=(0, 180), halt=lambda self: self(0), translate=lambda x: x+90)
+        self.pin_analog = mio.Pin(self.device, 4, mio.OUTPUT, mio.ANALOG, limits=(0, 5), halt=lambda self: self(0), translate=lambda x: x*10, translate_limts=(0, 100))
 
     def test_halt(self):
         self.pin_digital(True)
@@ -108,8 +108,12 @@ class TestNetwork(unittest.TestCase):
         self.device = self.network.Device('test')
         # connect a client
     def test_all(self):
-        self.pinBob = mio.Pin(self.device, 2, mio.OUTPUT, mio.DIGITAL, halt=lambda self: self(True))
-        self.pinBob(False)
+        self.pinTest1 = mio.Pin(self.device, 2, mio.OUTPUT, mio.DIGITAL, halt=lambda self: self(True))
+        self.pinTest1(False)
+        self.pinTest2 = mio.Pin(self.device, 1, mio.INPUT, mio.PWM, halt=lambda x: x(0),
+                                callback=lambda val, pin: print(f'callback value {val} on {pin.pin}'))
+        self.network.send('default', exec='device.test_input(pin1)')
+        time.sleep(10)
         # after tests it will disconnect and the networks halt will be fired.
 
 

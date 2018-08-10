@@ -76,14 +76,14 @@ Callback is activated any time the pin state changes.
     - RETURN: the Pin functor/object
     - device_obj: See Device
     - pin_int: The pin number of the device (determined by protocol)
-    - io_string: "Input" | "Output" | "True"
-    - type_string:  
+    - io: mio.INPUT | mio.OUTPUT
+    - type:
         **Note**: Not every type pin can be every type.  
-        Some devices will not support certain types at all.
-      + "Digital"
-      + "Analog"
-      + "PWM"
-      + "SERVO"
+        Refer to your specific hardware for more information.
+      + mio.DIGITAL
+      + mio.ANALOG
+      + mio.PWM
+      + mio.SERVO
     - Keywords arguments:  
       + halt: (required) A function to call with the pin object as the argument
         when the pins needs to be in a safe state.
@@ -93,7 +93,7 @@ Callback is activated any time the pin state changes.
       + callback: A function to call when the state of the pin changes.
         Given (value, pin_obj) as arguments.
         Called asynchronously; however, it must not block the thread.
-  * #### Pin_obj.state  
+  * #### Pin_obj.state
     The value of the last known state of the pin.  Does not use the Pin_obj() call.
 
 ## Group

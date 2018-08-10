@@ -1,10 +1,7 @@
-import asyncio
-import os, sys
-import functools
+import sys
 import machineio as mio
 import inspect
 import secrets
-import pickle
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import time
 import threading
@@ -52,6 +49,8 @@ class _NetworkDevice:
 
     def config(self, pin):
         self.pins.append(pin)
+        network_callback = 'lambda val, pin: send("callback", client_name, ' \
+                           '"controller", {"pin": pin.pin, "value": val})'
         code = inspect.getsource(pin.halt).split(',')
         for i, part in enumerate(code):
             if 'halt' in part:
@@ -65,7 +64,8 @@ class _NetworkDevice:
                 'command',
                 'controller',
                 self.client_name,
-                {'exec': f'pin{pin.pin} = machineio.Pin(device, {pin.pin}, "{pin.io}", "{pin.pin_type}", {halt})'},
+                {'exec': f'pin{pin.pin} = machineio.Pin(device, {pin.pin}, "{pin.io}", "{pin.pin_type}", {halt},'
+                         f' callback={network_callback})'},
                 )
         else:
             pass #todo if halt is not a lambda function
@@ -166,15 +166,15 @@ class Network:
                     {'future_id': 4, 'state': 32.4}
                     '''
                     self.future_response[payload['future_id']].set_value(payload['state'])
-                elif msg_type == 'callback':#todo test this
+                elif msg_type == 'callback':
                     '''
                     callback payload is
                     {'pin': 5, 'value': True}
                     '''
                     for pin in self.device.pins:
-                        if pin.pin_type == mio.OUTPUT and payload['pin'] == pin.pin:
-                            pin.state = payload['value']
+                        if payload['pin'] == pin.pin:
                             pin.callback(payload['value'], pin)
+                            pin.state = payload['value']
                             break
                 elif msg_type == 'notice':
                     '''
@@ -208,7 +208,33 @@ class Network:
         :param respond: set True if you would like to wait for the response.
         :return: The response if any else None.
         '''
-
+        if 'exec' in kwargs:
+            self._transmit(
+                'data',
+                'controller',
+                client_name,
+                {'action': 'exec', 'code': kwargs['exec']}
+            )
+        elif 'eval' in kwargs:
+            future_id = secrets.randbits(16)
+            while future_id in self.future_response:
+                future_id = secrets.randbits(16)
+            self.future_response[future_id] = Future()
+            self._transmit(
+                'data',
+                'controller',
+                client_name,
+                {'action': 'eval', 'code': kwargs['eval'], 'future_id': future_id}
+            )
+            timeout = 0
+            while not self.future_response[future_id].done():
+                time.sleep(.0001)
+                timeout += 1
+                if timeout == 10000:
+                    raise IOError('network took to long to respond.')
+            value = self.future_response[future_id].result()
+            del self.future_response[future_id]
+            return value
 
     def Device(self, protocol, com_port=None, client_name='default'):
         '''
