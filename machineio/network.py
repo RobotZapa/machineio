@@ -197,7 +197,7 @@ class Network:
                 socket_data = self.crypto.handshake_client(raw_data)
         else:
             socket_data = self.crypto.encrypt(raw_data)
-        print(self.conn)
+        # print(self.conn)
         self.conn.sendall(socket_data)
 
     def send(self, client_name, **kwargs):

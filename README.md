@@ -56,7 +56,7 @@ The device object is only used to pass as the device parameter on a Pin.
 Supported Protocols at this time include:
   * Test (prints the outputs/input the inputs)
   * Firmata
-  
+  * Raspberry_pi (in development)
   
   * #### machineio.Device(protocol_name_string)  
     - RETURN: the device object to use when creating pins
@@ -70,20 +70,20 @@ It represents everything about the pin down to a single parameter function.
 safety pin halt state should be some position that is safe for the
 Callback is activated any time the pin state changes.
 
-  * #### machineio.Pin(device_obj, pin_int, io_string, type_string, **keyword_args)  
+  * #### machineio.Pin(device_obj, pin_int, io_flag, modular_type_flag, **keyword_args)  
     creates the pin functor. The pin is now a function that can be called, 
     and an object that can be added to a group.
     - RETURN: the Pin functor/object
     - device_obj: See Device
     - pin_int: The pin number of the device (determined by protocol)
     - io: mio.INPUT | mio.OUTPUT
-    - type:
+    - type (modular flags):
         **Note**: Not every type pin can be every type.  
         Refer to your specific hardware for more information.
-      + mio.DIGITAL
-      + mio.ANALOG
-      + mio.PWM
-      + mio.SERVO
+      + mio.Digital()
+      + mio.Analog()
+      + mio.PWM()
+      + mio.Servo()
     - Keywords arguments:  
       + halt: (required) A function to call with the pin object as the argument
         when the pins needs to be in a safe state.
@@ -95,6 +95,15 @@ Callback is activated any time the pin state changes.
         Called asynchronously; however, it must not block the thread.
   * #### Pin_obj.state
     The value of the last known state of the pin.  Does not use the Pin_obj() call.
+  
+### Modular Type Flag Information
+When you give a pin a flag, often but not always you just want the default settings.
+So when you need something other than defaults modular flags will help you achieve that.  
+**In progress**
+  * mio.Digital()
+  * mio.Analog()
+  * mio.PWM()
+  * mio.Servo()
 
 ## Group
 A group is a cluster of pins that work together in some way.  A single pin can be used in more than one group!
@@ -112,7 +121,7 @@ A chain can be prevented from calling children by returning False on the groups 
 For pins in more than one group whatever group it branches to first will stop it.
 Further actions will be prevented until safety.Safe.proceed is True
 
-  * ####machineio.Group(dimensions, limit=lambda x: True, **keyword_args)
+  * #### machineio.Group(dimensions, limit=lambda x: True, **keyword_args)
     - RETURN: the Group functor/object
     - dimensions: int of how many arguments the group takes.
     - limit: a boolean return function to determine if the input is within the limits.
@@ -120,7 +129,7 @@ Further actions will be prevented until safety.Safe.proceed is True
         + objects: (not recommended use .add) a list of pins
         + translations: (not recommended use .add) a list of translation functions
         + delay: (not recommended use .add) a list of time delays in seconds
-  * ####Group_obj.add(pin_or_group, translation=lambda x: x, delay=None)
+  * #### Group_obj.add(pin_or_group, translation=lambda x: x, delay=None)
     - RETURN: None
     - pin_or_group: the pin or group object your adding
     - translation: the function that takes this (parent) Group's functor call args and 
@@ -135,7 +144,18 @@ To setup this server run machineio/scripts/server.py from the command line.
 The remote devices will also need a connection to the server. To setup this up
 run machineio/scripts/client.py on each remote client with devices you want to access.
 Any one client cannot have more then one controller at this time.
-  
+
+###### Definitions
+  * Server: the machineio/scripts/server.py script
+  * Client: the machineio/scripts/client.py script
+  * Controller: the Network object created in your code. (also technically a client)
+
+#### Setup process
+Run machineio/scripts/server.py it will ask for the names of any clients connecting.
+It generates key files for each client. You will copy the key file of each client without renaming,
+on to the proper client. Restart the server now it has all relevant key files.
+Connect all the machineio/scripts/client.py to the server, and then you can run your code.
+
 Before creating a network device you must create a network.
   * ##### ctrl_net = machineio.Network(host, port=20801, key_file='controller.key')  
   
@@ -145,11 +165,10 @@ Once you have a network you can create a device
 If you need to transport some data from or to device client you can do that. (This will likely change)
   * #####ctrl_net.send('data', 'controller', 'to_client_name', {'exec': code})
   
-If you would like to perform an action if the controller cannot reach the server.
+If you would like to perform an action on the controller if the controller cannot reach the server.
 takes self, the network object, as a parameter.
   * #####ctrl_net.linkfailure = lambda self: machineio.stop('link failure')
-
-
+  
 
 ## Configuration
 ### Servos

@@ -1,4 +1,4 @@
-from machineio import Device, Pin, Group, Safe, stop, kill
+from machineio import *
 import math
 
 arduino = Device('firmata')
@@ -6,23 +6,23 @@ arduino = Device('firmata')
 _off = lambda self: self(False)
 _zero = lambda self: self(0)
 
-speed_pin = Pin(arduino, 3, 'OUTPUT', 'PWM', halt=_zero)
+speed_pin = Pin(arduino, 3, OUTPUT, PWM(), halt=_zero)
 
 forward_right = Group(1)
-forward_right.add(Pin(arduino, 2, 'OUTPUT', 'DIGITAL', halt=_off))
-forward_right.add(Pin(arduino, 4, 'OUTPUT', 'DIGITAL', halt=_off))
+forward_right.add(Pin(arduino, 2, OUTPUT, Digital(), halt=_off))
+forward_right.add(Pin(arduino, 4, OUTPUT, Digital(), halt=_off))
 
 forward_left = Group(1)
-forward_left.add(Pin(arduino, 7, 'OUTPUT', 'DIGITAL', halt=_off))
-forward_left.add(Pin(arduino, 8, 'OUTPUT', 'DIGITAL', halt=_off))
+forward_left.add(Pin(arduino, 7, OUTPUT, Digital(), halt=_off))
+forward_left.add(Pin(arduino, 8, OUTPUT, Digital(), halt=_off))
 
 backward_right = Group(1)
-backward_right.add(Pin(arduino, 19, 'OUTPUT', 'DIGITAL', halt=_off))
-backward_right.add(Pin(arduino, 18, 'OUTPUT', 'DIGITAL', halt=_off))
+backward_right.add(Pin(arduino, 19, OUTPUT, Digital(), halt=_off))
+backward_right.add(Pin(arduino, 18, OUTPUT, Digital(), halt=_off))
 
 backward_left = Group(1)
-backward_left.add(Pin(arduino, 17, 'OUTPUT', 'DIGITAL', halt=_off))
-backward_left.add(Pin(arduino, 16, 'OUTPUT', 'DIGITAL', halt=_off))
+backward_left.add(Pin(arduino, 17, OUTPUT, Digital(), halt=_off))
+backward_left.add(Pin(arduino, 16, OUTPUT, Digital(), halt=_off))
 
 forward_pins = Group(1)
 forward_pins.add(forward_right)
@@ -38,10 +38,10 @@ speed.add(forward_pins, translation=lambda x: x > 0)
 speed.add(backward_pins, translation=lambda x: x < 0)
 
 _degrees = lambda x: x-90
-servo_fr = Pin(arduino, 5, 'OUTPUT', 'SERVO', limits=(-90, 90), halt=_zero, translation=_degrees)
-servo_fl = Pin(arduino, 6, 'OUTPUT', 'SERVO', limits=(-90, 90), halt=_zero, translation=_degrees)
-servo_br = Pin(arduino, 9, 'OUTPUT', 'SERVO', limits=(-90, 90), halt=_zero, translation=_degrees)
-servo_bl = Pin(arduino, 10, 'OUTPUT', 'SERVO', limits=(-90, 90), halt=_zero, translation=_degrees)
+servo_fr = Pin(arduino, 5, OUTPUT, Servo(), limits=(-90, 90), halt=_zero, translation=_degrees)
+servo_fl = Pin(arduino, 6, OUTPUT, Servo(), limits=(-90, 90), halt=_zero, translation=_degrees)
+servo_br = Pin(arduino, 9, OUTPUT, Servo(), limits=(-90, 90), halt=_zero, translation=_degrees)
+servo_bl = Pin(arduino, 10, OUTPUT, Servo(), limits=(-90, 90), halt=_zero, translation=_degrees)
 
 steer = Group(1)
 steer.add(servo_fr)

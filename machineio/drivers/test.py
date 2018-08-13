@@ -1,5 +1,3 @@
-import random
-
 class Device:
     # Do not alter this method.
     def __init__(self, protocol, com_port=None, network=None, **kwargs):
@@ -24,6 +22,7 @@ class Device:
         return value
 
     def test_input(self, pin, **kwargs):
+        import random
         value = random.randint(0, 100)
         print('generated random callback:', value)
         pin.state = value

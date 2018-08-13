@@ -2,7 +2,7 @@ from .safety import Safe
 import warnings
 
 class Pin:
-    def __init__(self, device, pin, io, pin_type, **kwargs):
+    def __init__(self, device, pin, io, mod_flag, **kwargs):
         '''
         :param pin: the pin number on the device
         :param io: INPUT | OUTPUT
@@ -15,7 +15,7 @@ class Pin:
         '''
         self.device = device
         self.pin = pin
-        self.pin_type = pin_type
+        self.pin_type = mod_flag.type
         self.limits = kwargs['limits'] if 'limits' in kwargs else False
         self.translate = kwargs['translate'] if 'translate' in kwargs else lambda x: x
         self.translate_limits = kwargs['translate_limits'] if 'translate_limits' in kwargs else False
@@ -29,19 +29,7 @@ class Pin:
             if not Safe.SUPPRESS_WARNINGS:
                 raise Warning('Safety keyword argument halt=func(Pin_obj) was not given.')
 
-        if pin_type == 'BOOLEAN':
-            pin_type = 'DIGITAL'
-            self.translate = lambda x: int(x)
-        elif pin_type == 'PPM' or pin_type == 'PCM':
-            pin_type = 'SERVO'
-        self.pin_type = pin_type
-
-        if io not in ('INPUT', 'OUTPUT', True):
-            raise Exception(f'I/O {io} is not valid.')
-        if pin_type not in ('PWM', 'DIGITAL', 'ANALOG', 'SERVO'):
-            raise NotImplemented(f'Type {pin_type} does not have a code path!')
-
-        if not self.limits and pin_type != 'DIGITAL':
+        if not self.limits and self.pin_type != 'DIGITAL':
             if not Safe.SUPPRESS_WARNINGS:
                 warnings.warn(f'You have not given the mechanical/electrical limits to pin {self.pin} on {self.device}')
 
