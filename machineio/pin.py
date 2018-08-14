@@ -16,6 +16,7 @@ class Pin:
         self.device = device
         self.pin = pin
         self.pin_type = mod_flag.type
+        self.mod_flag = mod_flag
         self.limits = kwargs['limits'] if 'limits' in kwargs else False
         self.translate = kwargs['translate'] if 'translate' in kwargs else lambda x: x
         self.translate_limits = kwargs['translate_limits'] if 'translate_limits' in kwargs else False

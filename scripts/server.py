@@ -28,6 +28,11 @@ class MioServer(asyncio.Protocol):
         print('Client has connected.')
         self.transport = transport
         self.crypto = machineio.network.Crypto()
+        self.send = lambda ty, fo, to, pl: self.transport.write(
+            machineio.network.pack(
+                self.keys[to].encrypt(
+                    machineio.network.assemble(ty, fo, to, pl))))
+
         MioServer.awaiting_handshake.append(self)
 
     def connection_lost(self, exc):
@@ -35,19 +40,31 @@ class MioServer(asyncio.Protocol):
             if name in MioServer.clients and MioServer.clients[name] is self:
                 del MioServer.keys[name]
                 del MioServer.clients[name]
-                MioServer.controller[name].transport.write(
-                    machineio.network.mionet_assembler('notice', 'server', f'controller~{name}', 'linkfailure'))
+                MioServer.controller[name].send('notice', 'server', f'controller~{name}',
+                                                {'reason': 'linkfailure', 'info': name})
                 print(f'Client "{name}" was properly removed.')
                 break
             elif name in MioServer.controller and MioServer.controller[name] is self:
                 del MioServer.keys[name]
                 del MioServer.controller[name]
+                if len(MioServer.controller) == 0:
+                    for client in MioServer.clients:
+                        MioServer.clients[client].send('notice', 'server', client, 'halt')
+                else:
+                    for ctrl in MioServer.controller:
+                        MioServer.controller[ctrl].send('notice', 'server', ctrl,
+                                                        {'reason': 'controller linkfailure', 'info': name})
                 print(f'Client Controller "{name}" was properly removed.')
                 break
         else:
             print('Client was not properly removed.')
 
     def data_received(self, data):
+        socket_data = machineio.network.unpack(data)
+        for data in socket_data:
+            self.process_data(data)
+
+    def process_data(self, data):
         if self in MioServer.awaiting_handshake:
             MioServer.awaiting_handshake.remove(self)
             data = self.crypto.handshake_server(data)
@@ -68,13 +85,13 @@ class MioServer(asyncio.Protocol):
             data = self.crypto.decrypt(data)
             data_type, from_name, to_name, payload = machineio.network.parse(data)
             if to_name == 'controller':
-                MioServer.controller[f'controller~{from_name}'].transport.write(
-                    MioServer.keys[f'controller~{from_name}'].encrypt(data))
+                MioServer.controller[f'controller~{from_name}'].transport.write(machineio.network.pack(
+                    MioServer.keys[f'controller~{from_name}'].encrypt(data)))
             elif to_name == 'server':
                 pass
             else:
                 data = MioServer.keys[to_name].encrypt(data)
-                MioServer.clients[to_name].transport.write(data)
+                MioServer.clients[to_name].transport.write(machineio.network.pack(data))
 
     def eof_received(self):
         pass

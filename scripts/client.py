@@ -36,14 +36,19 @@ class MioClient(asyncio.Protocol):
             'null',
         )
         handshake = self.crypto.handshake_client(add)
-        self.transport.write(handshake)
-        self.send = lambda ty, fr, to, pl: self.transport.write(
-            self.crypto.encrypt(machineio.network.assemble(ty, fr, to, pl)))
+        self.transport.write(machineio.network.pack(handshake))
+        self.send = lambda ty, fr, to, pl: self.transport.write(machineio.network.pack(
+            self.crypto.encrypt(machineio.network.assemble(ty, fr, to, pl))))
 
         self.mio_globals['send'] = self.send
         self.mio_globals['client_name'] = MioClient.client_name
 
     def data_received(self, data):
+        socket_data = machineio.network.unpack(data)
+        for data in socket_data:
+            self.process_data(data)
+
+    def process_data(self, data):
         data = self.crypto.decrypt(data)
         data_type, from_name, to_name, payload = machineio.network.parse(data)
         if data_type == 'command' and from_name == 'controller':
@@ -81,6 +86,10 @@ class MioClient(asyncio.Protocol):
                     'controller',
                     {'state': result, 'future_id': payload['future_id']},
                 )
+        elif data_type == 'notice' and from_name in ['server', 'controller']:
+            if payload == 'halt':
+                exec('machineio.kill()', self.mio_globals, self.mio_locals)
+                print('Server or Controller sent halt signal.')
         else:
             print(f'message type: {data_type} is not handled.')
 

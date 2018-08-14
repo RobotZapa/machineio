@@ -165,10 +165,14 @@ Once you have a network you can create a device
 If you need to transport some data from or to device client you can do that. (This will likely change)
   * #####ctrl_net.send('data', 'controller', 'to_client_name', {'exec': code})
   
-If you would like to perform an action on the controller if the controller cannot reach the server.
-takes self, the network object, as a parameter.
-  * #####ctrl_net.linkfailure = lambda self: machineio.stop('link failure')
-  
+#### Network Safety
+If the only controller disconnects the server will tell all clients to halt.
+If a client disconnects the server will call the Network.linkfailure()
+given by the linkfailure(client_name) keyword. If not given it will do nothing.
+If one of multiple controllers disconnects it will call
+Network.controller_linkfailure(self, controller_name) given as a keyword.
+If that does not exist it will do nothing.
+ 
 
 ## Configuration
 ### Servos

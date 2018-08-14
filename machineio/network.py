@@ -64,7 +64,7 @@ class _NetworkDevice:
                 'command',
                 'controller',
                 self.client_name,
-                {'exec': f'pin{pin.pin} = machineio.Pin(device, {pin.pin}, "{pin.io}", "{pin.pin_type}", {halt},'
+                {'exec': f'pin{pin.pin} = machineio.Pin(device, {pin.pin}, "{pin.io}", {pin.mod_flag.netcode}, {halt},'
                          f' callback={network_callback})'},
                 )
         else:
@@ -129,7 +129,8 @@ class Network:
         self.crypto = Crypto(key_file)
         self.future_response = {}
         self.conn = None
-        self.linkfailure = kwargs['linkfailure'] if 'linkfailure' in kwargs else lambda self: mio.stop('link failure')
+        self.linkfailure = kwargs['linkfailure'] if 'linkfailure' in kwargs else None
+        self.controller_linkfailure = kwargs['controller_linkfailure'] if 'controller_linkfailure' in kwargs else None
 
         # setup
         #           create the socket connection
@@ -157,36 +158,45 @@ class Network:
     def _receiver_thread(self):
         with self.conn:
             while True:
-                socket_data = self.conn.recv(1024)
-                raw_data = self.crypto.decrypt(socket_data)
-                msg_type, msg_from, msg_to, payload = parse(raw_data)
-                if msg_type == 'response':
-                    '''
-                    response payload is
-                    {'future_id': 4, 'state': 32.4}
-                    '''
-                    self.future_response[payload['future_id']].set_value(payload['state'])
-                elif msg_type == 'callback':
-                    '''
-                    callback payload is
-                    {'pin': 5, 'value': True}
-                    '''
-                    for pin in self.device.pins:
-                        if payload['pin'] == pin.pin:
-                            pin.callback(payload['value'], pin)
-                            pin.state = payload['value']
-                            break
-                elif msg_type == 'notice':
-                    '''
-                    notice payload is
-                    {'reason': why, 'info': extra_stuff}
-                    '''
-                    if payload['reason'] == 'linkfailure':
-                        self.linkfailure(self)
-                    elif payload['reason'] == 'error':
-                        raise Exception(f'Unhandled exception on {msg_from}: {payload["info"]}')
-                    else:
-                        print('NOTICE:', payload)
+                socket_data = unpack(self.conn.recv(1024))
+                for data in socket_data:
+                    self._receiver_handle(data)
+
+    def _receiver_handle(self, data):
+        raw_data = self.crypto.decrypt(data)
+        msg_type, msg_from, msg_to, payload = parse(raw_data)
+        if msg_type == 'response':
+            '''
+            response payload is
+            {'future_id': 4, 'state': 32.4}
+            '''
+            self.future_response[payload['future_id']].set_value(payload['state'])
+        elif msg_type == 'callback':
+            '''
+            callback payload is
+            {'pin': 5, 'value': True}
+            '''
+            for pin in self.device.pins:
+                if payload['pin'] == pin.pin:
+                    pin.callback(payload['value'], pin)
+                    pin.state = payload['value']
+                    break
+        elif msg_type == 'notice':
+            '''
+            notice payload is
+            {'reason': why, 'info': extra_stuff}
+            '''
+            if payload['reason'] == 'linkfailure':
+                if self.linkfailure:
+                    self.linkfailure(self, payload['info'])
+            if payload['reason'] == 'controller linkfailure':
+                if self.controller_linkfailure:
+                    self.controller_linkfailure(self, payload['info'])
+            elif payload['reason'] == 'error':
+                raise Exception(f'Unhandled exception on {msg_from}: {payload["info"]}')
+            else:
+                print('NOTICE:', payload)
+
 
     def _transmit(self, msg_type, msg_from, msg_to, msg_payload, **kwargs):
         raw_data = assemble(msg_type, msg_from, msg_to, msg_payload, **kwargs)
@@ -198,7 +208,7 @@ class Network:
         else:
             socket_data = self.crypto.encrypt(raw_data)
         # print(self.conn)
-        self.conn.sendall(socket_data)
+        self.conn.sendall(pack(socket_data))
 
     def send(self, client_name, **kwargs):
         '''
@@ -333,82 +343,29 @@ def parse(raw_data):
     return type_str, from_name, to_name, payload
 
 
-def mionet_assembler(type, from_name, to_name, payload, **kwargs):
+def pack(raw_data):
     '''
-
-    :param type: 'command', 'response', 'callback', 'notice', 'data', 'add'
-    :param from_name:
-    :param to_name:
-    :param payload:
-    :return: b'string'
+    Adds a 4 digit length of the stream size.
+    :param raw_data:
+    :return:
     '''
-    data = []
-    if type == 'command':
-        data.append(to_name)
-        data.append('~')
-        data.append(payload)
-    elif type == 'response':
-        data.append('r')
-        data.append(from_name)
-        data.append('~')
-        data.append(payload)
-    elif type == 'callback':
-        data.append('b')
-        data.append(to_name)
-        data.append('~')
-        data.append(payload)
-    elif type == 'notice':
-        data.append('n')
-        data.append(from_name)
-        data.append('~')
-        data.append(payload)
-    elif type == 'data':
-        data.append('d')
-        data.append(from_name)
-        data.append(',')
-        data.append(to_name)
-        data.append('~')
-        data.append(payload)
-    elif type == 'add':
-        data.append('a')
-        data.append(from_name)
-        data.append('~')
-        data.append(payload)
-    data = ''.join(data).encode()
-    return data
+    size = len(raw_data)
+    return format(size, '04d').encode() + raw_data
 
 
-def mionet_parser(data, **kwargs):
+def unpack(data):
     '''
-    Validates the message, and returns the raw data for execution
-    :param str_data:
-    :return: type, from_name, to_name, payload
+    Waits for the content of one entire message
+    :param data: the data from recv
+    :return: message list
+    try unpacking extra data if any
     '''
-    type, from_name, to_name, payload = None, None, None, None
-    data = data.decode()
-    header = data.split('~')[0]
-    payload = '~'.join(data.split('~')[1:])
-    if data.startswith('c'):
-        msg_type = 'command'
-        from_name = 'controller'
-        to_name = header[1:]
-    elif data.startswith('r'):
-        msg_type = 'respond'
-        from_name = header[1:]
-        to_name = 'controller'
-    elif data.startswith('b'):
-        msg_type = 'callback'
-        from_name = header[1:]
-        to_name = 'controller'
-    elif data.startswith('n'):
-        msg_type = 'notice'
-        from_name = header[1:]
-        to_name = 'controller'
-    elif data.startswith('d'):
-        msg_type = 'data'
-        from_name, to_name = header.split(',')
-    elif data.startswith('a'):
-        msg_type = 'add'
-        from_name = header.split(',')[0][1:]
-        to_name = 'server'
-    return msg_type, from_name, to_name, payload
+    total = len(data)
+    chunk_list = []
+    pos = 0
+    while pos < total:
+        size = int(data[pos:pos+4])
+        chunk_list.append(data[pos+4:pos+size+4])
+        pos += size + 4
+    return chunk_list
+
