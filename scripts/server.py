@@ -60,7 +60,9 @@ class MioServer(asyncio.Protocol):
             print('Client was not properly removed.')
 
     def data_received(self, data):
+        # print('RAW DATA', data)
         socket_data = machineio.network.unpack(data)
+        # print('SOCKET DATA', socket_data)
         for data in socket_data:
             self.process_data(data)
 
@@ -84,6 +86,7 @@ class MioServer(asyncio.Protocol):
         else:
             data = self.crypto.decrypt(data)
             data_type, from_name, to_name, payload = machineio.network.parse(data)
+            # print(f'Data Type: {data_type}, From:{from_name} To:{to_name} Payload:{payload}')
             if to_name == 'controller':
                 MioServer.controller[f'controller~{from_name}'].transport.write(machineio.network.pack(
                     MioServer.keys[f'controller~{from_name}'].encrypt(data)))

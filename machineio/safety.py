@@ -15,8 +15,8 @@ class Safe:
     SUPPRESS_WARNINGS = False
 
     #error log file name
-    logfile = 'error.log'
-    open(logfile, 'w+').close()
+    # logfile = 'error.log'
+    # open(logfile, 'w+').close()
 
     @staticmethod
     def insert_group(group):

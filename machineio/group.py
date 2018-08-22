@@ -71,7 +71,7 @@ class Group:
         :return:
         '''
         delay = kwargs['delay'] if 'delay' in kwargs else None
-        translation = kwargs['translation'] if 'translation' in kwargs else None
+        translation = kwargs['translate'] if 'translate' in kwargs else None
         self.delay.append(delay)
         self.objects.append(pin_or_group)
         self.translations.append(translation)

@@ -17,7 +17,7 @@ class Pin:
         self.pin = pin
         self.pin_type = mod_flag.type
         self.mod_flag = mod_flag
-        self.limits = kwargs['limits'] if 'limits' in kwargs else False
+        self.limits = kwargs['limits'] if 'limits' in kwargs else None
         self.translate = kwargs['translate'] if 'translate' in kwargs else lambda x: x
         self.translate_limits = kwargs['translate_limits'] if 'translate_limits' in kwargs else False
         self.state = None
@@ -41,9 +41,10 @@ class Pin:
 
     def __call__(self, value, *args, **kwargs):
         if Safe.proceed:
-            if self.limits and type(value) is int or type(value) is float:
-                if self.limits[0] > value or value > self.limits[1]:
-                    raise ValueError(f'Call {value} is not within limits specified')
+            if self.limits:
+                if type(value) is int or type(value) is float:
+                    if self.limits[0] > value or value > self.limits[1]:
+                        raise ValueError(f'Call {value} is not within limits specified')
             if self.translate:
                 if self.translate_limits:
                     if self.translate_limits[0] <= value <= self.translate_limits[1]:

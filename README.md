@@ -132,7 +132,7 @@ Further actions will be prevented until safety.Safe.proceed is True
   * #### Group_obj.add(pin_or_group, translation=lambda x: x, delay=None)
     - RETURN: None
     - pin_or_group: the pin or group object your adding
-    - translation: the function that takes this (parent) Group's functor call args and 
+    - translate: the function that takes this (parent) Group's functor call args and 
         returns the .add pin or groups args.
     - delay: when this (parent) Group is called it waits this amount of seconds
         before making the call to the .add group.

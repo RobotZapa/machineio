@@ -44,7 +44,7 @@ class _NetworkDevice:
             'command',
             'controller',
             self.client_name,
-            {'exec': f'device = machineio.Device("{self.protocol}", {self.port})'},
+            {'exec': f'device = machineio.device.Device("{self.protocol}", {self.port})'},
             )
 
     def config(self, pin):
@@ -64,6 +64,7 @@ class _NetworkDevice:
                 'command',
                 'controller',
                 self.client_name,
+                #todo fix pin.mod_flag.network
                 {'exec': f'pin{pin.pin} = machineio.Pin(device, {pin.pin}, "{pin.io}", {pin.mod_flag.netcode}, {halt},'
                          f' callback={network_callback})'},
                 )
@@ -368,4 +369,5 @@ def unpack(data):
         chunk_list.append(data[pos+4:pos+size+4])
         pos += size + 4
     return chunk_list
+
 

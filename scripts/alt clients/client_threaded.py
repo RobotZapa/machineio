@@ -1,32 +1,38 @@
 import sys, os, argparse
-import multiprocessing as mp
-import threading
-import time
+import threading, time
 import socket
 # for a reason as to why imports of siblings is so ugly
 # see https://mail.python.org/pipermail/python-3000/2007-April/006793.html
 sys.path.insert(0, os.path.abspath('..'))
 import machineio
 
-class NetExchanger:
+class MioClient:
 
-    version = '2.1'
+    version = '2.0'
 
     def __init__(self, client_name, host, port):
         self.client_name = client_name
         self.host = host
         self.port = port
+        self.send = None
         self.conn = None
         self.crypto = None
+        self.link_failure = lambda s: machineio.kill('Link failure')
 
-        # SETUP
+        self.mio_globals = {}
+        self.mio_locals = {}
 
-        # Setup crypto
+        # setup
+
         if os.path.isfile(f'{self.client_name}.key'):
             self.crypto = machineio.network.Crypto(self.client_name + '.key')
         else:
             print('Encryption key file was not located. You can create one with server.py --make_key client_name')
             self.crypto = machineio.network.Crypto()
+
+        exec('import sys, os', self.mio_globals, self.mio_locals)
+        exec("sys.path.insert(0, os.path.abspath('..'))", self.mio_globals, self.mio_locals)
+        exec('import machineio', self.mio_globals, self.mio_locals)
 
         #           create the socket connection
         for res in socket.getaddrinfo(self.host, self.port, socket.AF_UNSPEC, socket.SOCK_STREAM):
@@ -46,6 +52,19 @@ class NetExchanger:
         if self.conn is None:
             print('could not open socket')
             sys.exit(1)
+        #           start the receiver thread
+        receiver = threading.Thread(target=self._receiver_thread)
+        receiver.start()
+
+        ###########
+        # self.send(msg_type, msg_to, msg_from, payload, **kwargs)
+        ###########
+        self.send = lambda ty, fo, to, pl, **ka: self.conn.sendall(
+            machineio.network.pack(self.crypto.encrypt(
+                machineio.network.assemble(ty, fo, to, pl, **ka)
+            )))
+        self.mio_globals['send'] = self.send
+        self.mio_globals['client_name'] = self.client_name
 
         # handshake with server
         handshake = machineio.network.assemble('add', self.client_name, 'server', 'null')
@@ -53,91 +72,17 @@ class NetExchanger:
         handshake = machineio.network.pack(handshake)
         self.conn.sendall(handshake)
 
-        # START ProcessClient
-        self.inbound = mp.Queue()
-        self.outbound = mp.Queue()
-        self.process = mp.Process(target=ProcessClient, args=(self.inbound, self.outbound, self.client_name))
-        self.process.start()
+        print(f'Client {MioClient.version} startup complete.')
 
-        # START the threads
-        receiver = threading.Thread(target=self._receiver_thread)
-        receiver.start()
-        sender = threading.Thread(target=self._sender_thread)
-        sender.start()
-
-        print(f'Client {NetExchanger.version} startup complete.')
-
-    def send(self, msg_type, msg_from, msg_to, payload, **kwargs):
-        self.conn.sendall(machineio.network.pack(
-            machineio.network.assemble(msg_type, msg_from, msg_to, payload, **kwargs)
-        ))
 
     def _receiver_thread(self):
-        #todo place link_failure on queue if the link has failed.
+        #todo call self.link_failure on discconnect
+        #todo print that execution was halted
         with self.conn:
             while True:
                 socket_data = machineio.network.unpack(self.conn.recv(1024))
                 for data in socket_data:
-                    self.inbound.put(data)
-
-    def _sender_thread(self):
-        with self.conn:
-            while True:
-                if not self.outbound.empty():
-                    self.conn.sendall(self.outbound.get())
-                else:
-                    # 1/10 of a millisecond, a long time in computer time, a very short time in network time
-                    time.sleep(0.0001)
-
-class ProcessClient:
-
-    version = '2.1'
-
-    def __init__(self, inbound, outbound, client_name):
-        '''
-        :param inbound: multiprocess.Queue
-        :param outbound: multiprocess.Queue
-        '''
-        self.inbound = inbound
-        self.outbound = outbound
-        self.client_name = client_name
-        self.crypto = None
-        self.mio_globals = {}
-        self.mio_locals = {}
-        self.link_failure = None
-
-        # Setup crypto
-        if os.path.isfile(f'{self.client_name}.key'):
-            self.crypto = machineio.network.Crypto(self.client_name + '.key')
-        else:
-            print('Encryption key file was not located. You can create one with server.py --make_key client_name')
-            self.crypto = machineio.network.Crypto()
-
-        # Setup self.mio_local & self.mio_global namespace for code
-        exec('import sys, os', self.mio_globals, self.mio_locals)
-        exec("sys.path.insert(0, os.path.abspath('..'))", self.mio_globals, self.mio_locals)
-        exec('import machineio', self.mio_globals, self.mio_locals)
-        self.mio_locals['client_name'] = self.client_name
-        self.mio_globals['link_failure'] = self.link_failure
-        self.mio_globals['send'] = self.send
-
-        print(f'Client Process {ProcessClient.version} Starting...')
-        # Start
-        self.loop()
-
-    def send(self, msg_type, msg_from, msg_to, payload, **kwargs):
-        self.outbound.put(
-            machineio.network.pack(self.crypto.encrypt(
-                machineio.network.assemble(msg_type, msg_from, msg_to, payload, **kwargs)
-            )))
-
-    def loop(self):
-        while True:
-            if not self.inbound.empty():
-                self.process_data(self.inbound.get())
-            else:
-                #1/10 of a millisecond, a long time in computer time, a very short time in network time
-                time.sleep(0.0001)
+                    self.process_data(data)
 
     def process_data(self, data):
         data = self.crypto.decrypt(data)
@@ -207,7 +152,7 @@ if __name__ == '__main__':
         args.host, port = args.host.split(':', 1)
         args.port = int(port)
 
-    client = NetExchanger(args.name, args.host, args.port)
+    client = MioClient(args.name, args.host, args.port)
 
     while True:
         time.sleep(10)

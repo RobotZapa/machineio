@@ -3,8 +3,8 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.realpath('drivers'))+'/drivers')
 
 
-#Function that returns dynamic device protocol object
-#It is pretending to be a class for the user
+# Function that returns dynamic device protocol object
+# It is duck typed to look like a class since it functions like one
 def Device(protocol, com_port=None, network=None):
     if network is not None:
         from .network import _NetworkDevice
@@ -15,4 +15,3 @@ def Device(protocol, com_port=None, network=None):
         print('If you would like to add a driver file for this protocol please submit a request!')
         raise NotImplemented(f'Protocol {protocol} may not be implemented yet or dependencies for it are missing.')
     return proto.Device(protocol, com_port, network)
-

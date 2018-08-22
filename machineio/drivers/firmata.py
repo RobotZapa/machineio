@@ -1,12 +1,15 @@
+import asyncio
+
 class Device:
+
     def __init__(self, protocol, com_port=None, network=None):
         self.object = None
         self.port = com_port
         self.protocol = protocol.lower()
         self.thread = None
-        self.connect()
         self.network = network
         self.pins = []
+        self.connect()
 
     def connect(self):
         print(f'Connecting to device on port {self.port}...')
@@ -41,4 +44,3 @@ class Device:
                 self.object.digital_pin_write(pin.pin, value)
             elif pin.io == 'INPUT':
                 return self.object.digital_read(pin.pin)
-
