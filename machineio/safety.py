@@ -15,6 +15,7 @@ class Safe:
     SUPPRESS_WARNINGS = False
 
     #error log file name
+    logfile = None
     # logfile = 'error.log'
     # open(logfile, 'w+').close()
 
@@ -56,15 +57,19 @@ def kill(reason_message='No reason was given.'):
     Sets all pins to their assigned safe state.
     Logs any given reasons
     Prevents further movement
+    :param reason_message: a string to log
     :return:
     '''
     for pin in Safe.pins:
         pin.halt(pin)
     Safe.proceed = False
     reason_message = 'KILL: '+reason_message+'\n'
-    logfile = open(Safe.logfile, 'a')
-    logfile.write(reason_message)
-    logfile.close()
+    if Safe.logfile is not None:
+        logfile = open(Safe.logfile, 'a')
+        logfile.write(reason_message)
+        logfile.close()
+    else:
+        print(reason_message)
 
 
 def stop(reason_message='No reason was given.'):
@@ -72,6 +77,7 @@ def stop(reason_message='No reason was given.'):
     Calls the stop function assigned to all groups
     Sets safe state of all pins not in a group
     Prevents further movement
+    :param reason_message: a string to log
     :return:
     '''
     incomplete = Safe.groups + Safe.pins
@@ -83,6 +89,9 @@ def stop(reason_message='No reason was given.'):
                 incomplete.remove(child)
     Safe.proceed = False
     reason_message = 'STOP: '+reason_message+'\n'
-    logfile = open(Safe.logfile, 'a')
-    logfile.write(reason_message)
-    logfile.close()
+    if Safe.logfile is not None:
+        logfile = open(Safe.logfile, 'a')
+        logfile.write(reason_message)
+        logfile.close()
+    else:
+        print(reason_message)

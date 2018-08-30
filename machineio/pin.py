@@ -1,12 +1,13 @@
 from .safety import Safe
 import warnings
+from machineio import flags
 
 class Pin:
     def __init__(self, device, pin, io, mod_flag, **kwargs):
         '''
         :param pin: the pin number on the device
-        :param io: INPUT | OUTPUT
-        :param pin_type: PWM | DIGITAL | ANALOG | SERVO
+        :param io: Input() | Output()
+        :param pin_type: PWM() | Digital() | Analog() | Servo()
         :keyword limits: a tuple (low, high)
         :keyword translate: a function to do __call__ translation
         :keyword translate_limits: a tuple (low, high) limits before translated
@@ -30,7 +31,7 @@ class Pin:
             if not Safe.SUPPRESS_WARNINGS:
                 raise Warning('Safety keyword argument halt=func(Pin_obj) was not given.')
 
-        if not self.limits and self.pin_type != 'DIGITAL':
+        if not self.limits and self.pin_type != flags.Digital.type:
             if not Safe.SUPPRESS_WARNINGS:
                 warnings.warn(f'You have not given the mechanical/electrical limits to pin {self.pin} on {self.device}')
 
@@ -63,3 +64,6 @@ class Pin:
             if not Safe.SUPPRESS_WARNINGS:
                 raise RuntimeWarning(f'Move command on {self.device} pin {self.pin} cannot be executed!,'
                                      f'Safe.proceed is False')
+
+    def state(self):
+        return self.state

@@ -21,6 +21,7 @@ class Group:
         self.translations = []
         self.delay = []
         self.limit = kwargs['limit'] if 'limit' in kwargs else None
+        self.state = None
 
         if 'halt' in kwargs:
             self.halt = kwargs['halt']
@@ -51,6 +52,7 @@ class Group:
             raise TypeError(f'This group requires {self.dimensions} arguments')
         if self.limit is not None and not self.limit(args):
             raise ValueError(f'Call outside of group limits.')
+        self.state = args
         for obj, trans, delay in zip(self.objects, self.translations, self.delay):
             if delay:
                 threading.Timer(delay, Group._delay_event, [obj, trans, args, kwargs]).start()
@@ -75,6 +77,9 @@ class Group:
         self.delay.append(delay)
         self.objects.append(pin_or_group)
         self.translations.append(translation)
+
+    def state(self):
+        return self.state
 
     @staticmethod
     def _delay_event(obj, trans, args, kwargs):

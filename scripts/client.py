@@ -60,10 +60,10 @@ class NetExchanger:
         self.process.start()
 
         # START the threads
-        receiver = threading.Thread(target=self._receiver_thread)
-        receiver.start()
-        sender = threading.Thread(target=self._sender_thread)
-        sender.start()
+        self.receiver = threading.Thread(target=self._receiver_thread)
+        self.receiver.start()
+        self.sender = threading.Thread(target=self._sender_thread)
+        self.sender.start()
 
         print(f'Client {NetExchanger.version} startup complete.')
 
@@ -77,6 +77,8 @@ class NetExchanger:
         with self.conn:
             while True:
                 socket_data = machineio.network.unpack(self.conn.recv(1024))
+                if socket_data == '':
+                    self.link_failure()
                 for data in socket_data:
                     self.inbound.put(data)
 
@@ -84,10 +86,22 @@ class NetExchanger:
         with self.conn:
             while True:
                 if not self.outbound.empty():
-                    self.conn.sendall(self.outbound.get())
+                    try:
+                        self.conn.sendall(self.outbound.get())
+                    except socket.error:
+                        self.link_failure()
                 else:
                     # 1/10 of a millisecond, a long time in computer time, a very short time in network time
                     time.sleep(0.0001)
+
+    def link_failure(self):
+        self.inbound.put(self.crypto.encrypt(machineio.network.assemble(
+            'notice',
+            'self',
+            self.client_name,
+            'link_failure',
+        )))
+
 
 class ProcessClient:
 
@@ -97,6 +111,7 @@ class ProcessClient:
         '''
         :param inbound: multiprocess.Queue
         :param outbound: multiprocess.Queue
+        :param client_name: the name of the client and keyfile
         '''
         self.inbound = inbound
         self.outbound = outbound
@@ -117,7 +132,7 @@ class ProcessClient:
         exec('import sys, os', self.mio_globals, self.mio_locals)
         exec("sys.path.insert(0, os.path.abspath('..'))", self.mio_globals, self.mio_locals)
         exec('import machineio', self.mio_globals, self.mio_locals)
-        self.mio_locals['client_name'] = self.client_name
+        self.mio_globals['client_name'] = self.client_name
         self.mio_globals['link_failure'] = self.link_failure
         self.mio_globals['send'] = self.send
 
@@ -178,25 +193,31 @@ class ProcessClient:
                     {'state': result, 'future_id': payload['future_id']},
                 )
         elif data_type == 'notice' and from_name in ['server', 'controller']:
-            if payload == 'halt':
+            if payload['reason'] == 'halt':
                 exec('machineio.kill()', self.mio_globals, self.mio_locals)
                 print('Server or Controller sent halt signal.')
+            if payload['reason'] == 'reset':
+                print('CLIENT RESET')
+                machineio.safety.Safe.proceed = True
+                self.__init__(self.inbound, self.outbound, self.client_name)
+            if payload['reason'] == 'link_failure':
+                exec('link_failure()', self.mio_globals, self.mio_locals)
         else:
             print(f'message type: {data_type} is not handled.')
 
 
 ARGS = argparse.ArgumentParser(description='Machine IO network client.')
 ARGS.add_argument(
-    '--host', action='store', dest='host',
+    '-host', action='store', dest='host',
     default = '127.0.0.1', help='Host name')
 ARGS.add_argument(
-    '--port', action='store', dest='port',
+    '-port', action='store', dest='port',
     default=20801, type=int, help='Port number')
 ARGS.add_argument(
-    '--name', action='store', dest='name',
+    '-name', action='store', dest='name',
     default='default', help='Client Name')
 ARGS.add_argument(
-    '--iocp', action='store_true', dest='iocp',
+    '-iocp', action='store_true', dest='iocp',
     default=False, help='Use IOCP event loop')
 
 

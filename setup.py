@@ -5,10 +5,10 @@ with open("README.md", 'r') as fh:
 
 setuptools.setup(
     name='machineio',
-    version='0.1.1',
+    version='0.2.0',
     author='Michael Elliott',
     author_email='robotzapa@gmail.com',
-    description='Machine IO using functors to abstract hardware io',
+    description='Machine and robotics gpio hardware interface creation toolkit.',
     long_description=long_description,
     url='https://github.com/RobotZapa/machineio',
     packages=setuptools.find_packages(),

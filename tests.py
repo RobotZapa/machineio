@@ -6,10 +6,10 @@ class TestOutput(unittest.TestCase):
     def setUp(self):
         mio.Safe.SUPPRESS_WARNINGS = True
         self.device = mio.Device('test')
-        self.pin_digital = mio.Pin(self.device, 1, mio.OUTPUT, mio.Digital(), halt=lambda self: self(False))
-        self.pin_pwm = mio.Pin(self.device, 2, mio.OUTPUT, mio.PWM(), limits=(-90, 90), halt=lambda self: self(0), translate=lambda x: x/2, translation_limits=(0, 100))
-        self.pin_servo = mio.Pin(self.device, 3,  mio.OUTPUT, mio.Servo(), limits=(0, 180), halt=lambda self: self(0), translate=lambda x: x+90)
-        self.pin_analog = mio.Pin(self.device, 4, mio.OUTPUT, mio.Analog(), limits=(0, 5), halt=lambda self: self(0), translate=lambda x: x*10, translate_limts=(0, 100))
+        self.pin_digital = mio.Pin(self.device, 1, mio.Output(), mio.Digital(), halt=lambda self: self(False))
+        self.pin_pwm = mio.Pin(self.device, 2, mio.Output(), mio.PWM(), limits=(-90, 90), halt=lambda self: self(0), translate=lambda x: x/2, translation_limits=(0, 100))
+        self.pin_servo = mio.Pin(self.device, 3,  mio.Output(), mio.PPM(), limits=(0, 180), halt=lambda self: self(0), translate=lambda x: x+90)
+        self.pin_analog = mio.Pin(self.device, 4, mio.Output(), mio.Analog(), limits=(0, 5), halt=lambda self: self(0), translate=lambda x: x*10, translate_limts=(0, 100))
 
     def test_halt(self):
         self.pin_digital(True)
@@ -50,17 +50,17 @@ class TestGroup(unittest.TestCase):
     def setUp(self):
         mio.Safe.SUPPRESS_WARNINGS = True
         self.device = mio.Device('test')
-        self.pin2 = mio.Pin(self.device, 2, mio.OUTPUT, mio.Digital(), halt=lambda self: self(False))
-        self.pin1 = mio.Pin(self.device, 1, mio.OUTPUT, mio.PWM(), halt=lambda self: self(0))
-        self.pin3 = mio.Pin(self.device, 3, mio.OUTPUT, mio.Servo(), halt=lambda self: self(90))
+        self.pin2 = mio.Pin(self.device, 2, mio.Output(), mio.Digital(), halt=lambda self: self(False))
+        self.pin1 = mio.Pin(self.device, 1, mio.Output(), mio.PWM(), halt=lambda self: self(0))
+        self.pin3 = mio.Pin(self.device, 3, mio.Output(), mio.PPM(), halt=lambda self: self(90))
 
         self.main = mio.Group(1, halt=lambda self: self(0))
         self.main.add(self.pin1)
-        self.main.add(self.pin2, translation=lambda x: x>0)
+        self.main.add(self.pin2, translate=lambda x: x>0)
 
         self.alt = mio.Group(2)
-        self.alt.add(self.pin3, translation=lambda x, y: x)
-        self.alt.add(self.pin2, translation=lambda x, y: y)
+        self.alt.add(self.pin3, translate=lambda x, y: x)
+        self.alt.add(self.pin2, translate=lambda x, y: y)
 
         self.timed = mio.Group(1)
         self.timed.add(self.pin2, delay=1)
@@ -107,15 +107,15 @@ class TestNetwork(unittest.TestCase):
         self.network = mio.Network('127.0.0.1')
         self.device = self.network.Device('test')
         # connect a client
+
     def test_all(self):
-        self.pinTest1 = mio.Pin(self.device, 2, mio.OUTPUT, mio.Digital(), halt=lambda self: self(True))
+        self.pinTest1 = mio.Pin(self.device, 2, mio.Output(), mio.Digital(), halt=lambda self: self(True))
         self.pinTest1(False)
-        self.pinTest2 = mio.Pin(self.device, 1, mio.INPUT, mio.PWM(), halt=lambda x: x(0),
+        self.pinTest2 = mio.Pin(self.device, 1, mio.Input(), mio.PWM(), halt=lambda x: x(0),
                                 callback=lambda val, pin: print(f'callback value {val} on {pin.pin}'))
         self.network.send('default', exec='device.test_input(pin1)')
         time.sleep(10)
         # after tests it will disconnect and the networks halt will be fired.
-
 
 if __name__ == '__main__':
     unittest.main()

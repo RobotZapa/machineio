@@ -4,13 +4,9 @@ from .network import Network
 from .pin import Pin
 from .safety import Safe
 from .safety import stop, kill
-from .modular_flags import Digital, Analog, PWM, Servo
+from .flags import Digital, Analog, PWM, PPM, Servo, Input, Output
 
 
 def test():
     print('Import working')
-
-# FLAG IO Type
-OUTPUT = 'OUTPUT'
-INPUT = 'INPUT'
 

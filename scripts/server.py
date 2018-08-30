@@ -36,12 +36,16 @@ class MioServer(asyncio.Protocol):
         MioServer.awaiting_handshake.append(self)
 
     def connection_lost(self, exc):
+        print('---------------------')
         for name in it.chain(MioServer.clients, MioServer.controller):
             if name in MioServer.clients and MioServer.clients[name] is self:
                 del MioServer.keys[name]
                 del MioServer.clients[name]
-                MioServer.controller[name].send('notice', 'server', f'controller~{name}',
-                                                {'reason': 'linkfailure', 'info': name})
+                try:
+                    MioServer.controller[name].send('notice', 'server', f'controller~{name}',
+                                                    {'reason': 'link_failure', 'info': name})
+                except KeyError:
+                    print('Client had no connected controller.')
                 print(f'Client "{name}" was properly removed.')
                 break
             elif name in MioServer.controller and MioServer.controller[name] is self:
@@ -49,11 +53,11 @@ class MioServer(asyncio.Protocol):
                 del MioServer.controller[name]
                 if len(MioServer.controller) == 0:
                     for client in MioServer.clients:
-                        MioServer.clients[client].send('notice', 'server', client, 'halt')
+                        MioServer.clients[client].send('notice', 'server', client, {'reason': 'halt'})
                 else:
                     for ctrl in MioServer.controller:
                         MioServer.controller[ctrl].send('notice', 'server', ctrl,
-                                                        {'reason': 'controller linkfailure', 'info': name})
+                                                        {'reason': 'controller_link_failure', 'info': name})
                 print(f'Client Controller "{name}" was properly removed.')
                 break
         else:
@@ -77,6 +81,10 @@ class MioServer(asyncio.Protocol):
                     MioServer.controller[from_name] = self
                     MioServer.keys[from_name] = self.crypto
                     print(f'Client "{from_name}" is verified as controller.')
+                    MioServer.clients[payload].transport.write(machineio.network.pack(MioServer.keys[payload].encrypt(
+                        machineio.network.assemble('notice', 'server', payload, {'reason': 'reset'})
+                    )))
+                    print(f'Client "{payload}" was reset.')
                 elif from_name in MioServer.clients or from_name == 'server':
                     raise NameError('Client with this name already exists')
                 else:
@@ -106,13 +114,13 @@ def start_server(loop, host, port):
 
 ARGS = argparse.ArgumentParser(description='Machine IO network server.')
 ARGS.add_argument(
-    '--host', action='store', dest='host',
+    '-host', action='store', dest='host',
     default = '127.0.0.1', help='Host name')
 ARGS.add_argument(
-    '--port', action='store', dest='port',
+    '-port', action='store', dest='port',
     default=20801, type=int, help='Port number')
 ARGS.add_argument(
-    '--iocp', action='store_true', dest='iocp',
+    '-iocp', action='store_true', dest='iocp',
     default=False, help='Use IOCP event loop')
 
 
@@ -137,15 +145,6 @@ if __name__ == '__main__':
     server = start_server(loop, args.host, args.port)
 
     print(f'Starting Machine IO server on {args.host} port {args.port}')
-
-    if not os.path.isfile('controller.key'):
-        print('===== Generating the key files =====')
-        machineio.network.Crypto.generate_keyfile('controller.key')
-        clients = input('Input the names of your controllers (space separated): ').split(' ')
-        for client in clients:
-            machineio.network.Crypto.generate_keyfile(f'{client}.key')
-        print('You may now exit, distribute the keys and restart the server.')
-        print('You will have to connect the clients and then the controllers before issuing commands.')
 
     try:
         loop.run_forever()

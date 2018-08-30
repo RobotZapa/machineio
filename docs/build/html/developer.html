@@ -1,0 +1,284 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Welcome to MachineIO’s developer documentation! &mdash; MachineIO  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> MachineIO
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">Welcome to MachineIO’s developer documentation!</a><ul>
+<li><a class="reference internal" href="#the-goal">The Goal</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#project-parts">Project parts</a><ul>
+<li><a class="reference internal" href="#device">Device</a><ul>
+<li><a class="reference internal" href="#the-protocol-driver">The protocol driver</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#pins">Pins</a></li>
+<li><a class="reference internal" href="#groups">Groups</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#network">Network</a><ul>
+<li><a class="reference internal" href="#protocol">protocol</a></li>
+</ul>
+</li>
+</ul>
+</div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">MachineIO</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Welcome to MachineIO’s developer documentation!</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/developer.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="welcome-to-machineio-s-developer-documentation">
+<h1>Welcome to MachineIO’s developer documentation!<a class="headerlink" href="#welcome-to-machineio-s-developer-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="the-goal">
+<h2>The Goal<a class="headerlink" href="#the-goal" title="Permalink to this headline">¶</a></h2>
+<p>To have a simple, stable and safe functor tooling for using GPIO.
+The user will create their own interface for interacting with their project via functors.
+These functors should be easy to read and self explanatory to look at.
+These functors keywords and formatting should be as consistent as possible.</p>
+</div>
+</div>
+<div class="section" id="project-parts">
+<h1>Project parts<a class="headerlink" href="#project-parts" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="device">
+<h2>Device<a class="headerlink" href="#device" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="the-protocol-driver">
+<h3>The protocol driver<a class="headerlink" href="#the-protocol-driver" title="Permalink to this headline">¶</a></h3>
+<p>This is where the unified interface diverges into separate hardware controls.
+It loads up the Device class for the specific protocol from it’s named driver file.
+This way device support can be added simply by dropping in new files.</p>
+</div>
+</div>
+<div class="section" id="pins">
+<h2>Pins<a class="headerlink" href="#pins" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="groups">
+<h2>Groups<a class="headerlink" href="#groups" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+<div class="section" id="network">
+<h1>Network<a class="headerlink" href="#network" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="protocol">
+<h2>protocol<a class="headerlink" href="#protocol" title="Permalink to this headline">¶</a></h2>
+<p>the packet is list containing [type, source, dest, payload]
+the payload is dict</p>
+<p>currently it’s packed using pickle (not a security risk because system are already under direct control)</p>
+<p>Types are: ‘notice’, ‘data’, ‘command’, ‘response’ and ‘callback’</p>
+<ul class="simple">
+<li>notice payloads {‘reason’: __, ‘info’: __}</li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li>client</li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li>{‘reason’: ‘halt’}</li>
+<li>{‘reason’: ‘reset’}</li>
+<li>{‘reason’: ‘link_failure’}</li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li>controller</li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li>{‘reason’: ‘link_failure’, ‘info’: &lt;client_name&gt;}</li>
+<li>{‘reason’: ‘controller_link_failure’, ‘info’: &lt;controller_name&gt;}</li>
+<li>{‘reason’: ‘error’, ‘info’: &lt;error information&gt;}</li>
+</ul>
+</div></blockquote>
+</div></blockquote>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Michael Elliott.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

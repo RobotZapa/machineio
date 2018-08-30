@@ -1,3 +1,5 @@
+from machineio import flags
+
 class Device:
     # Do not alter this method.
     def __init__(self, protocol, com_port=None, network=None, **kwargs):

@@ -72,7 +72,7 @@ class _NetworkDevice:
             pass #todo if halt is not a lambda function
 
     def io(self, pin_obj, value, *args, **kwargs):
-        if pin_obj.pin_type == mio.OUTPUT:
+        if pin_obj.pin_type == mio.flags._OUTPUT:
             future_id = secrets.randbits(16)
             while future_id in self.network.future_response:
                 future_id = secrets.randbits(16)
@@ -120,6 +120,13 @@ class Future:
 
 class Network:
     def __init__(self, host, port=20801, key_file='controller.key', **kwargs):
+        '''
+        Creates the network object.
+        :param host: the servers hostname or address
+        :param port: the server port number
+        :param key_file: the servers key_file
+        :keyword linkfailure: a lambda function to execute, on the controller, on link failure
+        '''
         # public members
         self.host = host
         self.port = port
@@ -130,9 +137,8 @@ class Network:
         self.crypto = Crypto(key_file)
         self.future_response = {}
         self.conn = None
-        self.linkfailure = kwargs['linkfailure'] if 'linkfailure' in kwargs else None
-        self.controller_linkfailure = kwargs['controller_linkfailure'] if 'controller_linkfailure' in kwargs else None
-
+        self.link_failure = kwargs['link_failure'] if 'link_failure' in kwargs else None
+        self.controller_link_failure = kwargs['controller_link_failure'] if 'controller_link_failure' in kwargs else None
         # setup
         #           create the socket connection
         for res in socket.getaddrinfo(self.host, self.port, socket.AF_UNSPEC, socket.SOCK_STREAM):
@@ -187,12 +193,12 @@ class Network:
             notice payload is
             {'reason': why, 'info': extra_stuff}
             '''
-            if payload['reason'] == 'linkfailure':
-                if self.linkfailure:
-                    self.linkfailure(self, payload['info'])
-            if payload['reason'] == 'controller linkfailure':
-                if self.controller_linkfailure:
-                    self.controller_linkfailure(self, payload['info'])
+            if payload['reason'] == 'link_failure':
+                if self.link_failure:
+                    self.link_failure(self, payload['info'])
+            if payload['reason'] == 'controller_link_failure':
+                if self.controller_link_failure:
+                    self.controller_link_failure(self, payload['info'])
             elif payload['reason'] == 'error':
                 raise Exception(f'Unhandled exception on {msg_from}: {payload["info"]}')
             else:
@@ -264,6 +270,10 @@ class Network:
 class Crypto:
 
     def __init__(self, keyfile=None):
+        '''
+        Creates a encryption object.
+        :param keyfile: file name
+        '''
         self.link = None
         self.version = None
         self.auth = None
@@ -273,6 +283,11 @@ class Crypto:
         self.load(keyfile)
 
     def load(self, keyfile):
+        '''
+        initializes with the keyfile
+        :param keyfile: file name
+        :return:
+        '''
         self.keyfile = keyfile
         if keyfile is not None:
             f = open(keyfile, 'rb')
@@ -321,6 +336,15 @@ class Crypto:
 
     @staticmethod
     def generate_keyfile(filename, version='v0.1', key_bits=128, iv_bytes=12, auth_bytes=32):
+        '''
+        Creates the key file
+        :param filename: the name of the file to create
+        :param version: (use default if you don't know what your doing)
+        :param key_bits: ""
+        :param iv_bytes: ""
+        :param auth_bytes: ""
+        :return: creates a keyfile in the current directory
+        '''
         auth = secrets.token_bytes(auth_bytes)
         if version == 'v0.1':
             key = AESGCM.generate_key(bit_length=key_bits)
