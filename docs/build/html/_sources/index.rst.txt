@@ -44,6 +44,10 @@ Lambda Functions
 A lambda function is simply an inline function.
 It returns the result of the right hand side of the colon, while the left is used to define the arguments
 
+Here is an example::
+
+   lambda arg: arg*2
+
 GPIO
 ----
 General purpose input/output

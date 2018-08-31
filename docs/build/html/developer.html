@@ -198,7 +198,41 @@ the payload is dict</p>
 <p>currently it’s packed using pickle (not a security risk because system are already under direct control)</p>
 <p>Types are: ‘notice’, ‘data’, ‘command’, ‘response’ and ‘callback’</p>
 <ul class="simple">
-<li>notice payloads {‘reason’: __, ‘info’: __}</li>
+<li>command</li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li>{‘action’: ‘exec’, ‘code’: &lt;code_string&gt;}</li>
+<li>{‘action’: ‘eval’, ‘code’: &lt;code_string&gt;, ‘future_id’: &lt;future_id&gt;} this will send back a ‘response’ with the value</li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li>data</li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li>{‘action’: ‘exec’, ‘code’: &lt;code_string&gt;}</li>
+<li>{‘action’: ‘eval’, ‘code’: &lt;code_string&gt;, ‘future_id’: &lt;future_id&gt;} this will send back a ‘response’ with the value</li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li>response</li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li>{‘future_id’: &lt;future_id&gt;, ‘state’: &lt;future_value&gt;}</li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li>callback</li>
+</ul>
+<blockquote>
+<div><ul class="simple">
+<li>{‘pin’: &lt;int&gt;, ‘value’: &lt;new_value&gt;}</li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li>notice</li>
 </ul>
 <blockquote>
 <div><ul class="simple">
@@ -222,6 +256,7 @@ the payload is dict</p>
 </ul>
 </div></blockquote>
 </div></blockquote>
+<p>to keep the connection alive to each client a b’O’ can be sent from the client and a b’K’ will be returned by the server</p>
 </div>
 </div>
 

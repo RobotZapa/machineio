@@ -43,7 +43,17 @@ currently it's packed using pickle (not a security risk because system are alrea
 
 Types are: 'notice', 'data', 'command', 'response' and 'callback'
 
-* notice payloads {'reason': __, 'info': __}
+* command
+ * {'action': 'exec', 'code': <code_string>}
+ * {'action': 'eval', 'code': <code_string>, 'future_id': <future_id>} this will send back a 'response' with the value
+* data
+ * {'action': 'exec', 'code': <code_string>}
+ * {'action': 'eval', 'code': <code_string>, 'future_id': <future_id>} this will send back a 'response' with the value
+* response
+ * {'future_id': <future_id>, 'state': <future_value>}
+* callback
+ * {'pin': <int>, 'value': <new_value>}
+* notice
  * client
   * {'reason': 'halt'}
   * {'reason': 'reset'}
@@ -53,3 +63,4 @@ Types are: 'notice', 'data', 'command', 'response' and 'callback'
   * {'reason': 'controller_link_failure', 'info': <controller_name>}
   * {'reason': 'error', 'info': <error information>}
 
+to keep the connection alive to each client a b'O' can be sent from the client and a b'K' will be returned by the server

@@ -10,7 +10,7 @@ import machineio
 
 class NetExchanger:
 
-    version = '2.1'
+    version = '2.3'
 
     def __init__(self, client_name, host, port):
         self.client_name = client_name
@@ -18,6 +18,8 @@ class NetExchanger:
         self.port = port
         self.conn = None
         self.crypto = None
+        self.reconnect_time = 30
+        self.conn_open = True
 
         # SETUP
 
@@ -28,7 +30,26 @@ class NetExchanger:
             print('Encryption key file was not located. You can create one with server.py --make_key client_name')
             self.crypto = machineio.network.Crypto()
 
-        #           create the socket connection
+        # CONNECT
+        self.connect()
+        self.handshake()
+
+        # START ProcessClient
+        self.inbound = mp.Queue()
+        self.outbound = mp.Queue()
+        self.process = mp.Process(target=ProcessClient, args=(self.inbound, self.outbound, self.client_name))
+        self.process.start()
+
+        # START the threads
+        self.receiver = threading.Thread(target=self._receiver_thread)
+        self.receiver.start()
+        self.sender = threading.Thread(target=self._sender_thread)
+        self.sender.start()
+
+        print(f'Client {NetExchanger.version} startup complete.')
+
+    def connect(self):
+        # create the socket connection
         for res in socket.getaddrinfo(self.host, self.port, socket.AF_UNSPEC, socket.SOCK_STREAM):
             af, socktype, proto, canonname, sa = res
             try:
@@ -47,13 +68,65 @@ class NetExchanger:
             print('could not open socket')
             sys.exit(1)
 
+    def handshake(self):
         # handshake with server
         handshake = machineio.network.assemble('add', self.client_name, 'server', 'null')
         handshake = self.crypto.handshake_client(handshake)
         handshake = machineio.network.pack(handshake)
         self.conn.sendall(handshake)
 
+    def send(self, msg_type, msg_from, msg_to, payload, **kwargs):
+        self.conn.sendall(machineio.network.pack(
+            machineio.network.assemble(msg_type, msg_from, msg_to, payload, **kwargs)
+        ))
+
+    def _receiver_thread(self):
+        with self.conn:
+            self.conn.settimeout(0.03)
+            while self.conn_open:
+                try:
+                    socket_data = machineio.network.unpack(self.conn.recv(1024))
+                except (BrokenPipeError, ConnectionError, socket.error):
+                    print('Connection Failure.')
+                    sys.exit()
+                else:
+                    for data in socket_data:
+                        if data != b'OK':
+                            self.inbound.put(data)
+
+    def _sender_thread(self):
+        with self.conn:
+            while self.conn_open:
+                if not self.outbound.empty():
+                    try:
+                        self.conn.sendall(self.outbound.get())
+                    except socket.error:
+                        self.link_failure()
+                        sys.exit()
+                else:
+                    try:
+                        self.conn.sendall(machineio.network.pack(b'OK'))
+                    except (BrokenPipeError, ConnectionError, socket.error):
+                        self.link_failure()
+                        sys.exit()
+                    time.sleep(0.01)
+
+    def link_failure(self):
+        print('Running link_failure...')
+        self.inbound.put(self.crypto.encrypt(machineio.network.assemble(
+            'notice',
+            'self',
+            self.client_name,
+            {'reason': 'link_failure'},
+        )))
+        time.sleep(self.reconnect_time)
+        print('Attempting reconnect...')
+        # CONNECT
+        self.connect()
+        self.handshake()
+
         # START ProcessClient
+        self.process.terminate()
         self.inbound = mp.Queue()
         self.outbound = mp.Queue()
         self.process = mp.Process(target=ProcessClient, args=(self.inbound, self.outbound, self.client_name))
@@ -64,43 +137,7 @@ class NetExchanger:
         self.receiver.start()
         self.sender = threading.Thread(target=self._sender_thread)
         self.sender.start()
-
-        print(f'Client {NetExchanger.version} startup complete.')
-
-    def send(self, msg_type, msg_from, msg_to, payload, **kwargs):
-        self.conn.sendall(machineio.network.pack(
-            machineio.network.assemble(msg_type, msg_from, msg_to, payload, **kwargs)
-        ))
-
-    def _receiver_thread(self):
-        #todo place link_failure on queue if the link has failed.
-        with self.conn:
-            while True:
-                socket_data = machineio.network.unpack(self.conn.recv(1024))
-                if socket_data == '':
-                    self.link_failure()
-                for data in socket_data:
-                    self.inbound.put(data)
-
-    def _sender_thread(self):
-        with self.conn:
-            while True:
-                if not self.outbound.empty():
-                    try:
-                        self.conn.sendall(self.outbound.get())
-                    except socket.error:
-                        self.link_failure()
-                else:
-                    # 1/10 of a millisecond, a long time in computer time, a very short time in network time
-                    time.sleep(0.0001)
-
-    def link_failure(self):
-        self.inbound.put(self.crypto.encrypt(machineio.network.assemble(
-            'notice',
-            'self',
-            self.client_name,
-            'link_failure',
-        )))
+        print('Reconnect complete!')
 
 
 class ProcessClient:
@@ -182,17 +219,29 @@ class ProcessClient:
                 )
         elif data_type == 'data':
             # print('Data:', payload)
-            if payload['action'] == 'exec':
-                exec(payload['code'], self.mio_globals, self.mio_locals)
-            if payload['action'] == 'eval':
-                result = eval(payload['code'], self.mio_globals, self.mio_locals)
+            try:
+                # print('payload:', payload)
+                # print('locals', self.mio_locals)
+                if 'exec' in payload:
+                    exec(payload['exec'], self.mio_globals, self.mio_locals)
+                if 'eval' in payload:
+                    result = eval(payload['eval'], self.mio_globals, self.mio_locals)
+                    self.send(
+                        'response',
+                        self.client_name,
+                        'controller',
+                        {'state': result, 'future_id': payload['future_id']},
+                    )
+            except Exception as e:
+                print('Exception: ', e)
+                print(f'Exception Packet: [{data_type}, {from_name}, {to_name}, {payload}]')
                 self.send(
-                    'response',
+                    'notice',
                     self.client_name,
                     'controller',
-                    {'state': result, 'future_id': payload['future_id']},
+                    {'reason': 'error', 'info': e}
                 )
-        elif data_type == 'notice' and from_name in ['server', 'controller']:
+        elif data_type == 'notice' and from_name in ['server', 'controller', 'self']:
             if payload['reason'] == 'halt':
                 exec('machineio.kill()', self.mio_globals, self.mio_locals)
                 print('Server or Controller sent halt signal.')
@@ -202,6 +251,7 @@ class ProcessClient:
                 self.__init__(self.inbound, self.outbound, self.client_name)
             if payload['reason'] == 'link_failure':
                 exec('link_failure()', self.mio_globals, self.mio_locals)
+                print('LINK FAILURE')
         else:
             print(f'message type: {data_type} is not handled.')
 

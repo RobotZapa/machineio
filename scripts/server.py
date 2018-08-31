@@ -91,6 +91,8 @@ class MioServer(asyncio.Protocol):
                     MioServer.clients[from_name] = self
                     MioServer.keys[from_name] = self.crypto
                     print(f'Client "{from_name}" is now verified.')
+        elif data == b'OK':
+            self.transport.write(machineio.network.pack(b'OK'))
         else:
             data = self.crypto.decrypt(data)
             data_type, from_name, to_name, payload = machineio.network.parse(data)

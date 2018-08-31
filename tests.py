@@ -114,6 +114,13 @@ class TestNetwork(unittest.TestCase):
         self.pinTest2 = mio.Pin(self.device, 1, mio.Input(), mio.PWM(), halt=lambda x: x(0),
                                 callback=lambda val, pin: print(f'callback value {val} on {pin.pin}'))
         self.network.send('default', exec='device.test_input(pin1)')
+        time.sleep(1)
+        if input('Error test y/(n):').lower() in 'yes':
+            try:
+                self.network.send('default', exec='raise Exception("test error")')
+            except:
+                print('Restart the test to make sure the client is ok.')
+        print('You may disconnect the server to test client halt now.')
         time.sleep(10)
         # after tests it will disconnect and the networks halt will be fired.
 
